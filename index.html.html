@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Controle de Quilometragem</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- XLSX (Excel) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root{
+      --bg: #f7f7fb;
+      --card: #ffffff;
+      --text: #111827;
+      --muted:#6b7280;
+      --primary:#2563eb;
+      --border:#e5e7eb;
+      --grid: rgba(0,0,0,.08);
+    }
+    [data-theme="dark"]{
+      --bg:#101216;
+      --card:#171a21;
+      --text:#e5e7eb;
+      --muted:#9ca3af;
+      --primary:#60a5fa;
+      --border:#252a33;
+      --grid: rgba(255,255,255,.12);
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;background:var(--bg);color:var(--text);
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      line-height:1.35;
+    }
+    .container{max-width:980px;margin:0 auto;padding:16px}
+    h1{margin:14px 0 10px;text-align:center;font-size:1.5rem}
+    h2{margin:8px 0 14px;font-size:1.1rem;text-align:center}
+    .card{
+      background:var(--card);border:1px solid var(--border);
+      border-radius:14px; padding:14px; margin:12px 0 18px;
+      box-shadow:0 6px 18px rgba(0,0,0,.05);
+    }
+    label{display:block;margin:8px 0 6px;font-weight:600;font-size:.95rem}
+    input,select,textarea{
+      width:100%;padding:10px 12px;border:1px solid var(--border);
+      border-radius:10px;background:transparent;color:var(--text);font-size:.95rem;
+      outline:none;
+    }
+    input:focus,select:focus,textarea:focus{border-color:var(--primary)}
+    textarea{min-height:80px;resize:vertical}
+
+    /* Botões compactos */
+    .actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-start}
+    .btn{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:8px 12px;font-size:.9rem;font-weight:700;
+      background:var(--primary);color:#fff;border:0;border-radius:10px;
+      cursor:pointer;transition:transform .1s ease,opacity .2s ease;
+    }
+    .btn:hover{opacity:.9;transform:translateY(-1px)}
+    .btn.ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
+    .btn.small{padding:6px 10px;font-weight:600}
+
+    img.preview{max-width:120px;border-radius:8px;margin-top:6px;border:1px solid var(--border)}
+
+    /* Relatórios */
+    .relatorio{
+      display:flex;justify-content:space-between;align-items:center;gap:10px;
+      padding:10px;border:1px solid var(--border);border-radius:10px;margin-top:10px;flex-wrap:wrap;
+      background:var(--card);
+    }
+    .relatorio-info{font-size:.92rem}
+    .relatorio img{max-height:80px}
+
+    /* Dashboard */
+    .filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+    .filters select{flex:1;min-width:160px}
+    .metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px}
+    .metric{
+      border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center;background:var(--card)
+    }
+    .metric h3{margin:0;color:var(--muted);font-size:.9rem;font-weight:700}
+    .metric p{margin:6px 0 0;color:var(--primary);font-size:1.25rem;font-weight:800}
+
+    canvas{width:100%!important;height:300px!important}
+
+    /* Botão de contraste fixo, apenas ícone */
+    .theme-toggle{
+      position:fixed;top:10px;right:10px;z-index:9999;
+      background:transparent;border:none;color:var(--text);
+      font-size:22px;cursor:pointer;padding:0;line-height:1;
+    }
+    .theme-toggle:hover{opacity:.7}
+
+    @media (max-width:640px){
+      .metrics{grid-template-columns:1fr}
+      .actions{justify-content:stretch}
+      .btn{flex:1}
+    }
+  </style>
+
+<!-- Manifest -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#003366">
+
+<!-- Ícones -->
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+
+</head>
+<body>
+  <!-- Botão de contraste -->
+  <button id="themeToggle" class="theme-toggle" aria-label="Alternar tema">🌙</button>
+
+  <div class="container">
+    <h1>Controle de Quilometragem</h1>
+
+    <!-- Novo Registro -->
+    <div class="card">
+      <h2>Novo Registro</h2>
+
+      <div class="grid">
+        <label>Data e Hora (Brasília):</label>
+        <input type="text" id="dataHora" readonly />
+      </div>
+
+      <label>Placa do Veículo *</label>
+      <input type="text" id="placa" placeholder="Ex: ABC-1234" />
+
+      <label>Quilometragem Inicial *</label>
+      <input type="number" id="kmInicial" inputmode="numeric" />
+
+      <label>Foto Inicial *</label>
+      <input type="file" id="fotoInicial" accept="image/*" />
+      <img id="previewInicial" class="preview" alt="Prévia inicial" />
+
+      <label>Quilometragem Final *</label>
+      <input type="number" id="kmFinal" inputmode="numeric" />
+
+      <label>Foto Final *</label>
+      <input type="file" id="fotoFinal" accept="image/*" />
+      <img id="previewFinal" class="preview" alt="Prévia final" />
+
+      <label>Observação (opcional)</label>
+      <textarea id="observacao" placeholder="Algo a acrescentar?"></textarea>
+
+      <div class="actions">
+        <button class="btn small" id="btnSalvar">💾 Salvar</button>
+      </div>
+    </div>
+
+    <!-- Relatórios -->
+    <div class="card">
+      <h2>Relatórios</h2>
+      <div id="relatorios"></div>
+      <div class="actions" style="margin-top:8px">
+        <button class="btn small" id="btnExportar">📂 Exportar XLSX</button>
+        <button class="btn small ghost" id="btnApagar">🗑️ Apagar Todos</button>
+      </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="card">
+      <h2>Dashboard</h2>
+
+      <div class="filters">
+        <select id="periodo">
+          <option value="todos">Todos os registros</option>
+          <option value="semana">Última semana</option>
+          <option value="mes">Último mês</option>
+          <option value="ano">Último ano</option>
+        </select>
+        <select id="filtroPlaca">
+          <option value="todas">Todas as placas</option>
+        </select>
+      </div>
+
+      <div class="metrics">
+        <div class="metric"><h3>Total Km</h3><p id="totalKm">0</p></div>
+        <div class="metric"><h3>Média Km</h3><p id="mediaKm">0</p></div>
+        <div class="metric"><h3>Registros</h3><p id="numRegistros">0</p></div>
+      </div>
+
+      <canvas id="grafico"></canvas>
+    </div>
+  </div>
+
+  <script>
+    // ===== Estado =====
+    let registros = JSON.parse(localStorage.getItem("registros") || "[]");
+    let chart;
+
+    // ===== Utilidades =====
+    function nowBR(){
+      const opt = { timeZone:"America/Sao_Paulo", hour12:false };
+      return new Date().toLocaleString("pt-BR", opt);
+    }
+    function parseDataHoraBR(str){
+      const m = (str||"").match(/(\d{2})\/(\d{2})\/(\d{4}).*?(\d{2}):(\d{2})(?::(\d{2}))?/);
+      if(!m) return null;
+      const [, dd, MM, yyyy, HH, mm, ss] = m;
+      return new Date(`${yyyy}-${MM}-${dd}T${HH}:${mm}:${ss||"00"}`);
+    }
+    function compressImage(file, cb){
+      const reader = new FileReader();
+      reader.onload = e=>{
+        const img = new Image();
+        img.onload = ()=>{
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          const maxW = 700;
+          const scale = Math.min(maxW / img.width, 1);
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          cb(canvas.toDataURL("image/jpeg", 0.75));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+    function showOk(title, text){
+      Swal.fire({icon:"success", title, text, timer:1800, showConfirmButton:false});
+    }
+    function showErr(text){
+      Swal.fire({icon:"error", title:"Atenção", text});
+    }
+
+    // ===== Tema claro/escuro =====
+    const themeBtn = document.getElementById("themeToggle");
+    function updateThemeIcon(){
+      themeBtn.textContent = document.body.dataset.theme === "dark" ? "☀️" : "🌙";
+    }
+    themeBtn.addEventListener("click", ()=>{
+      document.body.dataset.theme = document.body.dataset.theme === "dark" ? "light" : "dark";
+      updateThemeIcon();
+      atualizarDashboard();
+    });
+    // Estado inicial tema
+    document.body.dataset.theme = "light";
+    updateThemeIcon();
+
+    // ===== Inputs e eventos =====
+    const dataHoraInput = document.getElementById("dataHora");
+    const placaInput    = document.getElementById("placa");
+    const kmIniInput    = document.getElementById("kmInicial");
+    const kmFimInput    = document.getElementById("kmFinal");
+    const fotoIniInput  = document.getElementById("fotoInicial");
+    const fotoFimInput  = document.getElementById("fotoFinal");
+    const obsInput      = document.getElementById("observacao");
+    const filtroPeriodo = document.getElementById("periodo");
+    const filtroPlaca   = document.getElementById("filtroPlaca");
+    const relatoriosDiv = document.getElementById("relatorios");
+
+    // Atualiza relógio
+    function tick(){ dataHoraInput.value = nowBR(); }
+    setInterval(tick, 1000); tick();
+
+    // Previews
+    fotoIniInput.addEventListener("change", e=>{
+      const f = e.target.files[0]; if(!f) return;
+      compressImage(f, url=>{
+        document.getElementById("previewInicial").src = url;
+        document.getElementById("previewInicial").dataset.img = url;
+      });
+    });
+    fotoFimInput.addEventListener("change", e=>{
+      const f = e.target.files[0]; if(!f) return;
+      compressImage(f, url=>{
+        document.getElementById("previewFinal").src = url;
+        document.getElementById("previewFinal").dataset.img = url;
+      });
+    });
+
+    document.getElementById("btnSalvar").addEventListener("click", salvarRegistro);
+    document.getElementById("btnExportar").addEventListener("click", exportarXLSX);
+    document.getElementById("btnApagar").addEventListener("click", apagarTodos);
+    filtroPeriodo.addEventListener("change", atualizarDashboard);
+    filtroPlaca.addEventListener("change", atualizarDashboard);
+
+    // ===== CRUD =====
+    function validar(){
+      const placa = (placaInput.value||"").trim().toUpperCase();
+      const kmI = parseFloat(kmIniInput.value);
+      const kmF = parseFloat(kmFimInput.value);
+      const fotoI = document.getElementById("previewInicial").dataset.img;
+      const fotoF = document.getElementById("previewFinal").dataset.img;
+
+      if(!placa) return showErr("Informe a placa do veículo.");
+      if(!Number.isFinite(kmI)) return showErr("Informe a quilometragem inicial.");
+      if(!Number.isFinite(kmF)) return showErr("Informe a quilometragem final.");
+      if(kmF < kmI) return showErr("A quilometragem final deve ser maior ou igual à inicial.");
+      if(!fotoI) return showErr("Anexe a foto inicial.");
+      if(!fotoF) return showErr("Anexe a foto final.");
+      return {placa, kmI, kmF, fotoI, fotoF};
+    }
+
+    function salvarRegistro(){
+      const ok = validar();
+      if(!ok) return;
+
+      const registro = {
+        dataHora: dataHoraInput.value,
+        placa: ok.placa,
+        kmInicial: ok.kmI,
+        kmFinal: ok.kmF,
+        fotoInicial: ok.fotoI,
+        fotoFinal: ok.fotoF,
+        observacao: (obsInput.value||"").trim()
+      };
+
+      registros.push(registro);
+      localStorage.setItem("registros", JSON.stringify(registros));
+      renderizarRelatorios();
+      atualizarDashboard();
+      showOk("Registro salvo", "Seu registro foi adicionado com sucesso.");
+
+      // limpar campos
+      placaInput.value = "";
+      kmIniInput.value = "";
+      kmFimInput.value = "";
+      fotoIniInput.value = "";
+      fotoFimInput.value = "";
+      obsInput.value = "";
+      document.getElementById("previewInicial").src = ""; delete document.getElementById("previewInicial").dataset.img;
+      document.getElementById("previewFinal").src = ""; delete document.getElementById("previewFinal").dataset.img;
+    }
+
+    function apagarTodos(){
+      if(registros.length === 0){
+        showErr("Não há registros para apagar."); return;
+      }
+      Swal.fire({
+        icon:"warning", title:"Apagar todos?", text:"Esta ação não pode ser desfeita.",
+        showCancelButton:true, confirmButtonText:"Apagar", cancelButtonText:"Cancelar"
+      }).then(res=>{
+        if(res.isConfirmed){
+          registros = [];
+          localStorage.removeItem("registros");
+          renderizarRelatorios();
+          atualizarDashboard();
+          showOk("Registros apagados", "Todos os registros foram removidos.");
+        }
+      });
+    }
+
+    function exportarXLSX(){
+      if(registros.length === 0){
+        showErr("Não há registros para exportar."); return;
+      }
+      const data = registros.map(r=>({
+        "Data/Hora": r.dataHora,
+        "Placa": r.placa,
+        "Km Inicial": r.kmInicial,
+        "Km Final": r.kmFinal,
+        "Km Rodado": (r.kmFinal - r.kmInicial),
+        "Observação": r.observacao || ""
+      }));
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Relatórios");
+      XLSX.writeFile(wb, "relatorios.xlsx");
+      showOk("Arquivo gerado", "Planilha Excel exportada com sucesso.");
+    }
+
+    // ===== UI =====
+    function renderizarRelatorios(){
+      relatoriosDiv.innerHTML = "";
+      registros.forEach((r,i)=>{
+        const el = document.createElement("div");
+        el.className = "relatorio";
+        el.innerHTML = `
+          <div class="relatorio-info">
+            <b>${r.dataHora}</b><br/>
+            Placa: ${r.placa}<br/>
+            Km Inicial: ${r.kmInicial} | Km Final: ${r.kmFinal} | <b>Rodado: ${r.kmFinal - r.kmInicial}</b><br/>
+            ${r.observacao ? `Obs.: ${r.observacao}<br/>` : ""}
+            <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+              ${r.fotoInicial ? `<img src="${r.fotoInicial}" alt="Inicial" />` : ""}
+              ${r.fotoFinal ? `<img src="${r.fotoFinal}" alt="Final" />` : ""}
+            </div>
+          </div>
+          <button class="btn small ghost" onclick="apagarRegistro(${i})">🗑️ Apagar</button>
+        `;
+        relatoriosDiv.appendChild(el);
+      });
+      atualizarFiltroPlacas();
+    }
+
+    function apagarRegistro(i){
+      registros.splice(i,1);
+      localStorage.setItem("registros", JSON.stringify(registros));
+      renderizarRelatorios();
+      atualizarDashboard();
+      showOk("Registro removido","O registro foi apagado.");
+    }
+
+    function atualizarFiltroPlacas(){
+      const sel = document.getElementById("filtroPlaca");
+      const atual = sel.value;
+      const placas = [...new Set(registros.map(r=>r.placa).filter(Boolean))];
+      sel.innerHTML = `<option value="todas">Todas as placas</option>`;
+      placas.forEach(p=>{
+        const o = document.createElement("option");
+        o.value = p; o.textContent = p; sel.appendChild(o);
+      });
+      if([...sel.options].some(o=>o.value===atual)) sel.value = atual;
+    }
+
+    function getChartColors(){
+      const cs = getComputedStyle(document.body);
+      return {
+        text: cs.getPropertyValue('--text').trim(),
+        grid: cs.getPropertyValue('--grid').trim()
+      };
+    }
+
+    function atualizarDashboard(){
+      let filtrados = [...registros];
+
+      // período
+      const per = filtroPeriodo.value;
+      const agora = new Date();
+      filtrados = filtrados.filter(r=>{
+        const dt = parseDataHoraBR(r.dataHora) || new Date();
+        const dias = (agora - dt)/86400000;
+        if(per==="semana") return dias<=7;
+        if(per==="mes")    return dias<=30;
+        if(per==="ano")    return dias<=365;
+        return true;
+      });
+
+      // placa
+      const placaSel = filtroPlaca.value;
+      if(placaSel !== "todas") filtrados = filtrados.filter(r=>r.placa===placaSel);
+
+      const labels = filtrados.map(r=>r.dataHora);
+      const kms = filtrados.map(r=>(+r.kmFinal || 0) - (+r.kmInicial || 0));
+
+      // métricas
+      const total = kms.reduce((a,b)=>a+(Number.isFinite(b)?b:0),0);
+      const media = kms.length ? total / kms.length : 0;
+      document.getElementById("totalKm").textContent = Math.round(total);
+      document.getElementById("mediaKm").textContent = media.toFixed(1);
+      document.getElementById("numRegistros").textContent = filtrados.length;
+
+      // gráfico
+      const ctx = document.getElementById("grafico").getContext("2d");
+      const {text, grid} = getChartColors();
+      const maxY = kms.length ? Math.max(...kms) : 0;
+
+      if(chart) chart.destroy();
+      chart = new Chart(ctx,{
+        type:"line",
+        data:{
+          labels,
+          datasets:[{
+            label:"Km Percorridos",
+            data:kms,
+            borderColor:"rgba(37,99,235,1)",
+            backgroundColor:"rgba(37,99,235,0.18)",
+            fill:true,tension:.3,pointRadius:4,pointHoverRadius:6
+          }]
+        },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{ labels:{ color:text, font:{size:12} } },
+                    tooltip:{ titleColor:text, bodyColor:text } },
+          scales:{
+            x:{ ticks:{ color:text, maxRotation:0, autoSkip:true },
+                grid:{ color:grid } },
+            y:{ beginAtZero:true,
+                suggestedMax: maxY>0 ? maxY + Math.ceil(maxY*0.15)+5 : 10,
+                ticks:{ color:text }, grid:{ color:grid } }
+          }
+        }
+      });
+    }
+
+    // ===== Inicialização =====
+    renderizarRelatorios();
+    atualizarDashboard();
+  </script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js")
+      .then(() => console.log("Service Worker registrado"))
+      .catch(err => console.error("Erro ao registrar SW:", err));
+  }
+</script>
+
+</body>
+</html>
