@@ -1,9 +1,0 @@
-{
-  "name": "Controle de KM",
-  "short_name": "KM",
-  "start_url": ".",
-  "display": "standalone",
-  "background_color": "#001f3f",
-  "theme_color": "#001f3f",
-  "icons": []
-}
