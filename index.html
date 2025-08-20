@@ -108,24 +108,9 @@
       .actions{justify-content:stretch}
       .btn{flex:1}
     }
-  
-/* PWA Install banner */
-.pwa-install{position:fixed;left:10px;right:10px;bottom:10px;z-index:10001;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px;display:none;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 8px 20px rgba(0,0,0,.12)}
-.pwa-install .msg{font-weight:700}
-.pwa-install .actions{display:flex;gap:8px}
-.pwa-install .actions button{padding:6px 10px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer}
-.pwa-install .actions .primary{background:var(--primary);color:#fff;border-color:var(--primary)}
-
-\1
-\1
-<div id="pwaInstall" class="pwa-install" role="dialog" aria-label="Instalar o aplicativo">
-  <span class="msg">Instale o aplicativo</span>
-  <div class="actions">
-    <button id="btnInstall" class="primary">Instalar</button>
-    <button id="btnInstallDismiss">Agora não</button>
-  </div>
-</div>
-
+  </style>
+</head>
+<body>
 <div style="text-align:center; margin-top:10px;"><button id="adminBtn" style="display:none;" onclick="openAdminPanel()">Administração</button></div>
 <style>
   #btnSairApp{
@@ -749,32 +734,7 @@ if ('serviceWorker' in navigator) {
 })();
 </script>
 
-<!-- Painel de Administração -->
-<div id="adminPanel" style="display:none; padding:20px;">
-  <h2>Gerenciar Usuários</h2>
-  <table border="1" cellpadding="5" cellspacing="0" style="width:100%;">
-    <thead>
-      <tr><th>Nome</th><th>Email</th><th>Status</th><th>Ação</th></tr>
-    </thead>
-    <tbody id="userList"></tbody>
-  </table>
-</div>
-<script>
-// Verificar se é admin
-firebase.auth().onAuthStateChanged((user) => {
-  if (user && user.email === 'alansrocha@gmail.com') {
-    document.getElementById('adminBtn').style.display = 'inline-block';
-  }
-});
-// Abrir painel
-function openAdminPanel() {
-    const adminWindow = window.open('', '_blank');
-    adminWindow.document.write(`
-        <html>
-        <head>
-            <title>Painel de Administração</title>
-            <meta charset="UTF-8">
-            <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+
             <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
             <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
             <style>
