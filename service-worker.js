@@ -1,39 +1,56 @@
-// service-worker.js
-const CACHE_NAME = 'controle-km-v6';
-const ASSETS = [
-  './',
-  './index.html',
-  './manifest.json'
+const CACHE_NAME = "controlekm-v3";
+const OFFLINE_URLS = [
+  "/",              // Página inicial
+  "/index.html",
+  "/manifest.json",
+  "/service-worker.js",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/admin.html"
 ];
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
+// Instala e faz cache inicial
+self.addEventListener("install", (event) => {
   self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.map(k => (k !== CACHE_NAME ? caches.delete(k) : null))))
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(OFFLINE_URLS);
+    })
   );
-  self.clients.claim();
 });
 
-self.addEventListener('fetch', (event) => {
+// Ativa e limpa caches antigos
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.map((key) => {
+        if (key !== CACHE_NAME) {
+          return caches.delete(key);
+        }
+      }))
+    ).then(() => self.clients.claim())
+  );
+});
+
+// Busca recursos com fallback para cache/offline
+self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") return;
+
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      return cached || fetch(event.request).then(response => {
-        try {
-          const url = new URL(event.request.url);
-          const sameOrigin = self.location.origin === url.origin;
-          if (sameOrigin && response && response.status === 200 && event.request.method === 'GET') {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-          }
-        } catch(e){}
+    fetch(event.request)
+      .then((response) => {
+        // Atualiza cache com a versão mais nova
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         return response;
-      }).catch(() => {
-        if (event.request.mode === 'navigate') return caches.match('./index.html');
-      });
-    })
+      })
+      .catch(() => {
+        // Se falhar (offline), tenta pegar do cache
+        return caches.match(event.request).then((cached) => {
+          if (cached) return cached;
+          // Caso o arquivo não esteja no cache, devolve a página inicial
+          return caches.match("/index.html");
+        });
+      })
   );
 });
