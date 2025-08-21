@@ -838,9 +838,87 @@ function render(list){ rows.innerHTML=''; list.forEach(u=>{ const tr=document.cr
 function listen(){ db.collection('users').onSnapshot(snap=>{ cache=[]; snap.forEach(d=>{ const data=d.data(); cache.push({uid:d.id, ...data}); }); render(cache.sort((a,b)=>(a.email||'').localeCompare(b.email||''))); }); }
 window.toggle = function(uid, isRevoked){ db.collection('users').doc(uid).update({revoked: !isRevoked}); };
 document.getElementById('exportXlsx').addEventListener('click', ()=>{ const data = cache.map(({uid,name,email,revoked})=>({uid,name,email,status: revoked?'Revogado':'Ativo'})); const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Usuarios'); XLSX.writeFile(wb, 'usuarios.xlsx'); });
-listen();</script></body></html>`); doc.close();
+listen();</script>
+<script>
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const div = document.createElement('div');
+  div.innerHTML = '<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#fff;padding:10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.3);z-index:9999;">' +
+                  '<span>Instale o aplicativo</span> <button id="installBtn" style="margin-left:10px;">Instalar</button></div>';
+  document.body.appendChild(div);
+  document.getElementById('installBtn').addEventListener('click', () => {
+    div.remove();
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.finally(() => deferredPrompt = null);
+  });
+});
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('service-worker.js', { scope: './' });
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing;
+        if (newSW) {
+          newSW.addEventListener('statechange', () => {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        }
+      });
+      navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
+    } catch (e) {
+      console.log('SW registration failed', e);
+    }
+  });
+}
+</script>
+
+</body></html>`); doc.close();
   };
 })();
+</script>
+
+
+<script>
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const div = document.createElement('div');
+  div.innerHTML = '<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#fff;padding:10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.3);z-index:9999;">' +
+                  '<span>Instale o aplicativo</span> <button id="installBtn" style="margin-left:10px;">Instalar</button></div>';
+  document.body.appendChild(div);
+  document.getElementById('installBtn').addEventListener('click', () => {
+    div.remove();
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.finally(() => deferredPrompt = null);
+  });
+});
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('service-worker.js', { scope: './' });
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing;
+        if (newSW) {
+          newSW.addEventListener('statechange', () => {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        }
+      });
+      navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
+    } catch (e) {
+      console.log('SW registration failed', e);
+    }
+  });
+}
 </script>
 
 </body>
@@ -922,9 +1000,87 @@ function render(list){ rows.innerHTML=''; list.forEach(u=>{ const tr=document.cr
 function listen(){ db.collection('users').onSnapshot(snap=>{ cache=[]; snap.forEach(d=>{ const data=d.data(); cache.push({uid:d.id, ...data}); }); render(cache.sort((a,b)=>(a.email||'').localeCompare(b.email||''))); }); }
 window.toggle = function(uid, isRevoked){ db.collection('users').doc(uid).update({revoked: !isRevoked}); };
 document.getElementById('exportXlsx').addEventListener('click', ()=>{ const data = cache.map(({uid,name,email,revoked})=>({uid,name,email,status: revoked?'Revogado':'Ativo'})); const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Usuarios'); XLSX.writeFile(wb, 'usuarios.xlsx'); });
-listen();</script></body></html>`); doc.close();
+listen();</script>
+<script>
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const div = document.createElement('div');
+  div.innerHTML = '<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#fff;padding:10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.3);z-index:9999;">' +
+                  '<span>Instale o aplicativo</span> <button id="installBtn" style="margin-left:10px;">Instalar</button></div>';
+  document.body.appendChild(div);
+  document.getElementById('installBtn').addEventListener('click', () => {
+    div.remove();
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.finally(() => deferredPrompt = null);
+  });
+});
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('service-worker.js', { scope: './' });
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing;
+        if (newSW) {
+          newSW.addEventListener('statechange', () => {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        }
+      });
+      navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
+    } catch (e) {
+      console.log('SW registration failed', e);
+    }
+  });
+}
+</script>
+
+</body></html>`); doc.close();
   };
 })();
+</script>
+
+
+<script>
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const div = document.createElement('div');
+  div.innerHTML = '<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#fff;padding:10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.3);z-index:9999;">' +
+                  '<span>Instale o aplicativo</span> <button id="installBtn" style="margin-left:10px;">Instalar</button></div>';
+  document.body.appendChild(div);
+  document.getElementById('installBtn').addEventListener('click', () => {
+    div.remove();
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.finally(() => deferredPrompt = null);
+  });
+});
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('service-worker.js', { scope: './' });
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing;
+        if (newSW) {
+          newSW.addEventListener('statechange', () => {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        }
+      });
+      navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
+    } catch (e) {
+      console.log('SW registration failed', e);
+    }
+  });
+}
 </script>
 
 </body>
