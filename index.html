@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#003366">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Controle de Quilometragem</title>
+
+  <!-- Chart.js -->
+  
+  <!-- SweetAlert2 -->
+  
+  <!-- XLSX (Excel) -->
+  
+
+  <style>
+    :root{
+      --bg: #f7f7fb;
+      --card: #ffffff;
+      --text: #111827;
+      --muted:#6b7280;
+      --primary:#2563eb;
+      --border:#e5e7eb;
+      --grid: rgba(0,0,0,.08);
+    }
+    [data-theme="dark"]{
+      --bg:#101216;
+      --card:#171a21;
+      --text:#e5e7eb;
+      --muted:#9ca3af;
+      --primary:#60a5fa;
+      --border:#252a33;
+      --grid: rgba(255,255,255,.12);
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;background:var(--bg);color:var(--text);
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      line-height:1.35;
+    }
+    .container{max-width:980px;margin:0 auto;padding:16px}
+    h1{margin:14px 0 10px;text-align:center;font-size:1.5rem}
+    h2{margin:8px 0 14px;font-size:1.1rem;text-align:center}
+    .card{
+      background:var(--card);border:1px solid var(--border);
+      border-radius:14px; padding:14px; margin:12px 0 18px;
+      box-shadow:0 6px 18px rgba(0,0,0,.05);
+    }
+    label{display:block;margin:8px 0 6px;font-weight:600;font-size:.95rem}
+    input,select,textarea{
+      width:100%;padding:10px 12px;border:1px solid var(--border);
+      border-radius:10px;background:transparent;color:var(--text);font-size:.95rem;
+      outline:none;
+    }
+    input:focus,select:focus,textarea:focus{border-color:var(--primary)}
+    textarea{min-height:80px;resize:vertical}
+
+    /* Botões compactos */
+    .actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-start}
+    .btn{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:8px 12px;font-size:.9rem;font-weight:700;
+      background:var(--primary);color:#fff;border:0;border-radius:10px;
+      cursor:pointer;transition:transform .1s ease,opacity .2s ease;
+    }
+    .btn:hover{opacity:.9;transform:translateY(-1px)}
+    .btn.ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
+    .btn.small{padding:6px 10px;font-weight:600}
+
+    img.preview{max-width:120px;border-radius:8px;margin-top:6px;border:1px solid var(--border)}
+
+    /* Relatórios */
+    .relatorio{
+      display:flex;justify-content:space-between;align-items:center;gap:10px;
+      padding:10px;border:1px solid var(--border);border-radius:10px;margin-top:10px;flex-wrap:wrap;
+      background:var(--card);
+    }
+    .relatorio-info{font-size:.92rem}
+    .relatorio img{max-height:80px}
+
+    /* Dashboard */
+    .filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+    .filters select{flex:1;min-width:160px}
+    .metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px}
+    .metric{
+      border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center;background:var(--card)
+    }
+    .metric h3{margin:0;color:var(--muted);font-size:.9rem;font-weight:700}
+    .metric p{margin:6px 0 0;color:var(--primary);font-size:1.25rem;font-weight:800}
+
+    canvas{width:100%!important;height:300px!important}
+
+    /* Botão de contraste fixo, apenas ícone */
+    .theme-toggle{
+      position:fixed;top:10px;right:10px;z-index:9999;
+      background:transparent;border:none;color:var(--text);
+      font-size:22px;cursor:pointer;padding:0;line-height:1;
+    }
+    .theme-toggle:hover{opacity:.7}
+
+    @media (max-width:640px){
+      .metrics{grid-template-columns:1fr}
+      .actions{justify-content:stretch}
+      .btn{flex:1}
+    }
+  </style>
+</head>
+<body>
+<div style="text-align:center; margin-top:10px;"><button id="adminBtn" style="display:none;" onclick="openAdminPanel()">Administração</button></div>
+<style>
+  #btnSairApp{
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 10000;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    display: none;
+  }
+  #btnSairApp:hover{ opacity: .9; }
+</style>
+<button id="btnSairApp" title="Sair">Sair</button>
+
+<div id="appRoot" hidden>
+
+  <!-- Botão de contraste -->
+  <button id="themeToggle" class="theme-toggle" aria-label="Alternar tema">🌙</button>
+
+  <div class="container">
+    <h1>Controle de Quilometragem</h1>
+
+    <!-- Novo Registro -->
+    <div class="card">
+      <h2>Novo Registro</h2>
+
+      <div class="grid">
+        <label>Data e Hora (Brasília):</label>
+        <input type="text" id="dataHora" readonly />
+      </div>
+
+      <label>Placa do Veículo *</label>
+      <input type="text" id="placa" placeholder="Ex: ABC-1234" />
+
+      <label>Quilometragem Inicial *</label>
+      <input type="number" id="kmInicial" inputmode="numeric" />
+
+      <label>Foto Inicial *</label>
+      <input type="file" id="fotoInicial" accept="image/*" />
+      <img id="previewInicial" class="preview" alt="Prévia inicial" />
+
+      <label>Quilometragem Final *</label>
+      <input type="number" id="kmFinal" inputmode="numeric" />
+
+      <label>Foto Final *</label>
+      <input type="file" id="fotoFinal" accept="image/*" />
+      <img id="previewFinal" class="preview" alt="Prévia final" />
+
+      <label>Observação (opcional)</label>
+      <textarea id="observacao" placeholder="Algo a acrescentar?"></textarea>
+
+      <div class="actions">
+        <button class="btn small" id="btnSalvar">💾 Salvar</button>
+      </div>
+    </div>
+
+    <!-- Relatórios -->
+    <div class="card">
+      <h2>Relatórios</h2>
+      <div id="relatorios"></div>
+      <div class="actions" style="margin-top:8px">
+        <button class="btn small" id="btnExportar">📂 Exportar XLSX</button>
+        <button class="btn small ghost" id="btnApagar">🗑️ Apagar Todos</button>
+      </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="card">
+      <h2>Dashboard</h2>
+
+      <div class="filters">
+        <select id="periodo">
+          <option value="todos">Todos os registros</option>
+          <option value="semana">Última semana</option>
+          <option value="mes">Último mês</option>
+          <option value="ano">Último ano</option>
+        </select>
+        <select id="filtroPlaca">
+          <option value="todas">Todas as placas</option>
+        </select>
+      </div>
+
+      <div class="metrics">
+        <div class="metric"><h3>Total Km</h3><p id="totalKm">0</p></div>
+        <div class="metric"><h3>Média Km</h3><p id="mediaKm">0</p></div>
+        <div class="metric"><h3>Registros</h3><p id="numRegistros">0</p></div>
+      </div>
+
+      <canvas id="grafico"></canvas>
+    </div>
+  </div>
+
+  
+
+</div>
+
+<style>
+  .auth-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.08);backdrop-filter:saturate(150%) blur(2px);z-index:9999}
+  .auth-card{width:100%;max-width:380px;background:var(--card-bg,#fff);color:var(--text-color,#111);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.15);padding:20px}
+  .auth-title{margin:0 0 8px;font-size:20px}
+  .auth-sub{margin:0 0 16px;font-size:13px;opacity:.8}
+  .auth-input{width:100%;padding:10px 12px;border:1px solid #d0d7de;border-radius:10px;margin:6px 0 10px;font-size:14px}
+  .auth-btn{width:100%;padding:10px;border:none;border-radius:10px;cursor:pointer;font-weight:600;margin-top:8px}
+  .auth-primary{background:#0d47a1;color:#fff}
+  .auth-secondary{background:#e9eef7}
+  .auth-row{display:flex;gap:8px}
+  .auth-row .auth-btn{flex:1}
+  @media (max-width:420px){.auth-card{margin:8px;padding:16px;border-radius:14px}}
+</style>
+<div id="authScreen" class="auth-overlay" aria-hidden="false">
+  <div class="auth-card">
+    <h3 class="auth-title">Entrar no Controle de KM</h3>
+    <p class="auth-sub">Use seu e-mail e senha. Se ainda não tem, cadastre-se.</p>
+    <input id="authEmail" class="auth-input" type="email" placeholder="Seu e-mail" autocomplete="email" required>
+    <input id="authPass" class="auth-input" type="password" placeholder="Sua senha" autocomplete="current-password" required>
+    <button id="btnEntrar" class="auth-btn auth-primary">Entrar</button>
+    <div class="auth-row">
+      <button id="btnCadastrar" class="auth-btn auth-secondary">Cadastrar</button>
+      <button id="btnEsqueci" class="auth-btn auth-secondary">Esqueci a senha</button>
+    </div>
+    <div id="authMsg" class="auth-sub" style="margin-top:10px;color:#d32f2f;display:none;"></div>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+            
+            
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; background: #f4f4f4; }
+                h2 { text-align: center; }
+                table { border-collapse: collapse; width: 100%; background: white; }
+                th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+                th { background: #007bff; color: white; }
+                button { margin: 5px; padding: 6px 12px; cursor: pointer; }
+            </style>
+        </head>
+        <body>
+            <h2>Painel de Administração</h2>
+            <button id="exportExcel">Exportar Excel</button>
+            <table id="usersTable">
+                <thead>
+                    <tr><th>Nome</th><th>Email</th><th>Status</th><th>Ação</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            
+        
+
+<style>body{font-family:Arial,system-ui,sans-serif;background:#f6f7fb;color:#222;margin:0;padding:24px;}
+.wrap{max-width:980px;margin:0 auto;}h2{margin:0 0 12px 0;text-align:center;}
+.actions{display:flex;gap:8px;justify-content:center;margin-bottom:16px;}
+button{padding:8px 12px;border:0;border-radius:8px;cursor:pointer;background:#0d6efd;color:#fff;}
+button.secondary{background:#6c757d;}table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,.06);}
+th,td{padding:10px 12px;border-bottom:1px solid #eee;text-align:left;font-size:14px;}th{background:#f0f4ff;font-weight:600;}tr:last-child td{border-bottom:0;}
+.badge{padding:4px 8px;border-radius:999px;font-size:12px;display:inline-block}.ok{background:#e6f4ea;color:#0f5132}.rev{background:#fde2e1;color:#842029}</style></head>
+<body><div class="wrap"><h2>Administração – Usuários</h2><div class="actions">
+<button id="exportXlsx">Exportar Excel</button><button class="secondary" onclick="window.close()">Fechar</button></div>
+<table><thead><tr><th>Nome</th><th>Email</th><th>Status</th><th>Ação</th></tr></thead><tbody id="rows"></tbody></table></div>
+
+
+
+<script>
+firebase.auth().onAuthStateChanged(user => {
+    if(user && user.email === "alansrocha@gmail.com") {
+        document.getElementById("adminBtn").style.display = "block";
+    }
+});
+
+document.getElementById("adminBtn").addEventListener("click", () => {
+    document.getElementById("mainContent").style.display = "none";
+    document.getElementById("adminPanel").style.display = "block";
+    loadUsers();
+});
+
+document.getElementById("backBtn").addEventListener("click", () => {
+    document.getElementById("adminPanel").style.display = "none";
+    document.getElementById("mainContent").style.display = "block";
+});
+
+function loadUsers() {
+    const tbody = document.getElementById("userList");
+    tbody.innerHTML = "";
+    db.collection("users").get().then(snapshot => {
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.revoked === undefined) {
+                db.collection("users").doc(doc.id).update({ revoked: false });
+                data.revoked = false;
+            }
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${data.name || ""}</td>
+                <td>${data.email}</td>
+                <td>${data.revoked ? "Revogado" : "Ativo"}</td>
+                <td>
+                    <button onclick="toggleAccess('${doc.id}', ${!data.revoked})">
+                        ${data.revoked ? "Restaurar" : "Revogar"}
+                    </button>
+                </td>`;
+            tbody.appendChild(tr);
+        });
+    });
+}
+
+function toggleAccess(uid, revoke) {
+    db.collection("users").doc(uid).update({ revoked: revoke }).then(loadUsers);
+}
+
+document.getElementById("exportExcel").addEventListener("click", () => {
+    let csv = "Nome,Email,Status\n";
+    document.querySelectorAll("#userList tr").forEach(row => {
+        const cols = row.querySelectorAll("td");
+        csv += Array.from(cols).map(td => td.innerText).join(",") + "\n";
+    });
+    const blob = new Blob([csv], { type: "text/csv" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "usuarios.csv";
+    link.click();
+});
+</script>
+
+</body>
+</html>`); doc.close();
+  };
+})();
+</script>
+
+
+
+
+<script>
+firebase.auth().onAuthStateChanged(user => {
+    if(user && user.email === "alansrocha@gmail.com") {
+        document.getElementById("adminBtn").style.display = "block";
+    }
+});
+
+document.getElementById("adminBtn").addEventListener("click", () => {
+    document.getElementById("mainContent").style.display = "none";
+    document.getElementById("adminPanel").style.display = "block";
+    loadUsers();
+});
+
+document.getElementById("backBtn").addEventListener("click", () => {
+    document.getElementById("adminPanel").style.display = "none";
+    document.getElementById("mainContent").style.display = "block";
+});
+
+function loadUsers() {
+    const tbody = document.getElementById("userList");
+    tbody.innerHTML = "";
+    db.collection("users").get().then(snapshot => {
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.revoked === undefined) {
+                db.collection("users").doc(doc.id).update({ revoked: false });
+                data.revoked = false;
+            }
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${data.name || ""}</td>
+                <td>${data.email}</td>
+                <td>${data.revoked ? "Revogado" : "Ativo"}</td>
+                <td>
+                    <button onclick="toggleAccess('${doc.id}', ${!data.revoked})">
+                        ${data.revoked ? "Restaurar" : "Revogar"}
+                    </button>
+                </td>`;
+            tbody.appendChild(tr);
+        });
+    });
+}
+
+function toggleAccess(uid, revoke) {
+    db.collection("users").doc(uid).update({ revoked: revoke }).then(loadUsers);
+}
+
+document.getElementById("exportExcel").addEventListener("click", () => {
+    let csv = "Nome,Email,Status\n";
+    document.querySelectorAll("#userList tr").forEach(row => {
+        const cols = row.querySelectorAll("td");
+        csv += Array.from(cols).map(td => td.innerText).join(",") + "\n";
+    });
+    const blob = new Blob([csv], { type: "text/csv" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "usuarios.csv";
+    link.click();
+});
+</script>
+
+</body>
+
+        </html>
+    `);
+}
+
+// Carregar lista de usuários
+async function loadUsers() {
+  const snapshot = await firebase.firestore().collection('users').get();
+  const tbody = document.getElementById('userList');
+  tbody.innerHTML = '';
+  snapshot.forEach(doc => {
+    const data = doc.data();
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${data.name || ''}</td>
+      <td>${data.email}</td>
+      <td>${data.revoked ? 'Revogado' : 'Ativo'}</td>
+      <td>
+        <button onclick="toggleAccess('${doc.id}', ${!data.revoked})">
+          ${data.revoked ? 'Restaurar' : 'Revogar'}
+        </button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// Alternar acesso
+async function toggleAccess(uid, revoke) {
+  await firebase.firestore().collection('users').doc(uid).update({ revoked: revoke });
+  loadUsers();
+}
+</script>
+
+
+
+<style>body{font-family:Arial,system-ui,sans-serif;background:#f6f7fb;color:#222;margin:0;padding:24px;}
+.wrap{max-width:980px;margin:0 auto;}h2{margin:0 0 12px 0;text-align:center;}
+.actions{display:flex;gap:8px;justify-content:center;margin-bottom:16px;}
+button{padding:8px 12px;border:0;border-radius:8px;cursor:pointer;background:#0d6efd;color:#fff;}
+button.secondary{background:#6c757d;}table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,.06);}
+th,td{padding:10px 12px;border-bottom:1px solid #eee;text-align:left;font-size:14px;}th{background:#f0f4ff;font-weight:600;}tr:last-child td{border-bottom:0;}
+.badge{padding:4px 8px;border-radius:999px;font-size:12px;display:inline-block}.ok{background:#e6f4ea;color:#0f5132}.rev{background:#fde2e1;color:#842029}</style></head>
+<body><div class="wrap"><h2>Administração – Usuários</h2><div class="actions">
+<button id="exportXlsx">Exportar Excel</button><button class="secondary" onclick="window.close()">Fechar</button></div>
+<table><thead><tr><th>Nome</th><th>Email</th><th>Status</th><th>Ação</th></tr></thead><tbody id="rows"></tbody></table></div>
+
+
+
+<script>
+firebase.auth().onAuthStateChanged(user => {
+    if(user && user.email === "alansrocha@gmail.com") {
+        document.getElementById("adminBtn").style.display = "block";
+    }
+});
+
+document.getElementById("adminBtn").addEventListener("click", () => {
+    document.getElementById("mainContent").style.display = "none";
+    document.getElementById("adminPanel").style.display = "block";
+    loadUsers();
+});
+
+document.getElementById("backBtn").addEventListener("click", () => {
+    document.getElementById("adminPanel").style.display = "none";
+    document.getElementById("mainContent").style.display = "block";
+});
+
+function loadUsers() {
+    const tbody = document.getElementById("userList");
+    tbody.innerHTML = "";
+    db.collection("users").get().then(snapshot => {
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.revoked === undefined) {
+                db.collection("users").doc(doc.id).update({ revoked: false });
+                data.revoked = false;
+            }
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${data.name || ""}</td>
+                <td>${data.email}</td>
+                <td>${data.revoked ? "Revogado" : "Ativo"}</td>
+                <td>
+                    <button onclick="toggleAccess('${doc.id}', ${!data.revoked})">
+                        ${data.revoked ? "Restaurar" : "Revogar"}
+                    </button>
+                </td>`;
+            tbody.appendChild(tr);
+        });
+    });
+}
+
+function toggleAccess(uid, revoke) {
+    db.collection("users").doc(uid).update({ revoked: revoke }).then(loadUsers);
+}
+
+document.getElementById("exportExcel").addEventListener("click", () => {
+    let csv = "Nome,Email,Status\n";
+    document.querySelectorAll("#userList tr").forEach(row => {
+        const cols = row.querySelectorAll("td");
+        csv += Array.from(cols).map(td => td.innerText).join(",") + "\n";
+    });
+    const blob = new Blob([csv], { type: "text/csv" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "usuarios.csv";
+    link.click();
+});
+</script>
+
+</body>
+</html>`); doc.close();
+  };
+})();
+</script>
+
+
+
+
+<script>
+firebase.auth().onAuthStateChanged(user => {
+    if(user && user.email === "alansrocha@gmail.com") {
+        document.getElementById("adminBtn").style.display = "block";
+    }
+});
+
+document.getElementById("adminBtn").addEventListener("click", () => {
+    document.getElementById("mainContent").style.display = "none";
+    document.getElementById("adminPanel").style.display = "block";
+    loadUsers();
+});
+
+document.getElementById("backBtn").addEventListener("click", () => {
+    document.getElementById("adminPanel").style.display = "none";
+    document.getElementById("mainContent").style.display = "block";
+});
+
+function loadUsers() {
+    const tbody = document.getElementById("userList");
+    tbody.innerHTML = "";
+    db.collection("users").get().then(snapshot => {
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.revoked === undefined) {
+                db.collection("users").doc(doc.id).update({ revoked: false });
+                data.revoked = false;
+            }
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${data.name || ""}</td>
+                <td>${data.email}</td>
+                <td>${data.revoked ? "Revogado" : "Ativo"}</td>
+                <td>
+                    <button onclick="toggleAccess('${doc.id}', ${!data.revoked})">
+                        ${data.revoked ? "Restaurar" : "Revogar"}
+                    </button>
+                </td>`;
+            tbody.appendChild(tr);
+        });
+    });
+}
+
+function toggleAccess(uid, revoke) {
+    db.collection("users").doc(uid).update({ revoked: revoke }).then(loadUsers);
+}
+
+document.getElementById("exportExcel").addEventListener("click", () => {
+    let csv = "Nome,Email,Status\n";
+    document.querySelectorAll("#userList tr").forEach(row => {
+        const cols = row.querySelectorAll("td");
+        csv += Array.from(cols).map(td => td.innerText).join(",") + "\n";
+    });
+    const blob = new Blob([csv], { type: "text/csv" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "usuarios.csv";
+    link.click();
+});
+</script>
+
+</body>
+
+</html>
