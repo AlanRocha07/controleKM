@@ -1,10 +1,13 @@
 {
-  "name": "Controle de KM",
-  "short_name": "KM",
-  "start_url": "./index.html",
+  "name": "Controle KM",
+  "short_name": "ControleKM",
+  "start_url": "/controleKM/index.html",
+  "scope": "/controleKM/",
   "display": "standalone",
-  "background_color": "#0a2540",
-  "theme_color": "#0a2540",
+  "display_override": ["standalone", "fullscreen"],
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "description": "Controle de KM com painel de administração",
   "icons": [
     {
       "src": "icon-192.png",
