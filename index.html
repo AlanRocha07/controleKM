@@ -208,5 +208,32 @@ document.getElementById('exportUsersXlsx').addEventListener('click',()=>{const d
 let deferredPrompt;window.addEventListener('beforeinstallprompt',(e)=>{e.preventDefault();deferredPrompt=e;const b=document.createElement('button');b.textContent='📲 Instale o aplicativo';b.className='btn small';b.style.marginTop='10px';const c=document.querySelector('.container')||document.body;c.prepend(b);b.addEventListener('click',async()=>{b.remove();deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null})});
 if('serviceWorker'in navigator){navigator.serviceWorker.register('service-worker.js').then(reg=>{if(reg.waiting){reg.waiting.postMessage({type:'SKIP_WAITING'})}reg.addEventListener('updatefound',()=>{const nw=reg.installing;nw?.addEventListener('statechange',()=>{if(nw.state==='installed'&&navigator.serviceWorker.controller){}})});navigator.serviceWorker.addEventListener('controllerchange',()=>{})}).catch(()=>{})}
 </script>
-</body>
+<script>
+document.getElementById('btnEntrar')?.addEventListener('click', async () => {
+    console.log('[LOGIN] Botão Entrar clicado');
+    const email = document.getElementById('authEmail')?.value.trim();
+    const pass = document.getElementById('authPass')?.value;
+
+    if (!email || !pass) {
+        console.warn('[LOGIN] Campos vazios');
+        alert('Preencha e-mail e senha.');
+        return;
+    }
+
+    try {
+        console.log('[LOGIN] Tentando autenticar...', email);
+        const cred = await firebase.auth().signInWithEmailAndPassword(email, pass);
+        console.log('[LOGIN] Sucesso!', cred.user.email);
+        if (!cred.user.emailVerified) {
+            await firebase.auth().signOut();
+            alert('Verifique seu e-mail antes de acessar o app.');
+            return;
+        }
+        alert('Login realizado com sucesso!');
+    } catch (e) {
+        console.error('[LOGIN] Erro:', e);
+        alert('Erro no login: ' + (e.message || e));
+    }
+});
+</script></body>
 </html>
