@@ -1,39 +1,43 @@
-// service-worker.js
-const CACHE_NAME = 'controle-km-v6';
-const ASSETS = [
-  './',
-  './index.html',
-  './manifest.json'
-];
+
+const CACHE_NAME = 'controlekm-v3';
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.map(k => (k !== CACHE_NAME ? caches.delete(k) : null))))
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => k !== CACHE_NAME && caches.delete(k)));
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      return cached || fetch(event.request).then(response => {
-        try {
-          const url = new URL(event.request.url);
-          const sameOrigin = self.location.origin === url.origin;
-          if (sameOrigin && response && response.status === 200 && event.request.method === 'GET') {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-          }
-        } catch(e){}
-        return response;
-      }).catch(() => {
-        if (event.request.mode === 'navigate') return caches.match('./index.html');
-      });
-    })
-  );
+  const req = event.request;
+  // Evita cache para chamadas dinâmicas do Firebase/Firestore/Auth
+  const url = new URL(req.url);
+  if (url.origin.includes('firebaseio.com') || url.origin.includes('googleapis.com')) {
+    event.respondWith(fetch(req));
+    return;
+  }
+
+  // Network-first para HTML/CSS/JS, com fallback para cache
+  event.respondWith((async () => {
+    try {
+      const fresh = await fetch(req);
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(req, fresh.clone());
+      return fresh;
+    } catch (e) {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(req);
+      if (cached) return cached;
+      // fallback básico
+      if (req.mode === 'navigate') {
+        return new Response('<h1>Offline</h1><p>Sem conexão. Tente novamente.</p>', { headers: { 'Content-Type': 'text/html' }});
+      }
+      throw e;
+    }
+  })());
 });

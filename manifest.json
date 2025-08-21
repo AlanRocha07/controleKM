@@ -1,7 +1,7 @@
 {
   "name": "Controle de KM",
   "short_name": "KM",
-  "start_url": "./index.html",
+  "start_url": "/controleKM/index.html",
   "display": "standalone",
   "background_color": "#0a2540",
   "theme_color": "#0a2540",
@@ -17,4 +17,8 @@
       "type": "image/png"
     }
   ]
+,
+  "scope": "/controleKM/"
+,
+  "display_override": ["standalone","fullscreen"]
 }

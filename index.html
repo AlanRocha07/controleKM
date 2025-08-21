@@ -11,11 +11,11 @@
   <title>Controle de Quilometragem</title>
 
   <!-- Chart.js -->
-  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- SweetAlert2 -->
-  
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <!-- XLSX (Excel) -->
-  
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
     :root{
@@ -210,7 +210,302 @@
     </div>
   </div>
 
-  
+  <script>
+    // ===== Estado =====
+    let registros = JSON.parse(localStorage.getItem("registros") || "[]");
+    let chart;
+
+    // ===== Utilidades =====
+    function nowBR(){
+      const opt = { timeZone:"America/Sao_Paulo", hour12:false };
+      return new Date().toLocaleString("pt-BR", opt);
+    }
+    function parseDataHoraBR(str){
+      const m = (str||"").match(/(\d{2})\/(\d{2})\/(\d{4}).*?(\d{2}):(\d{2})(?::(\d{2}))?/);
+      if(!m) return null;
+      const [, dd, MM, yyyy, HH, mm, ss] = m;
+      return new Date(`${yyyy}-${MM}-${dd}T${HH}:${mm}:${ss||"00"}`);
+    }
+    function compressImage(file, cb){
+      const reader = new FileReader();
+      reader.onload = e=>{
+        const img = new Image();
+        img.onload = ()=>{
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          const maxW = 700;
+          const scale = Math.min(maxW / img.width, 1);
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          cb(canvas.toDataURL("image/jpeg", 0.75));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+    function showOk(title, text){
+      Swal.fire({icon:"success", title, text, timer:1800, showConfirmButton:false});
+    }
+    function showErr(text){
+      Swal.fire({icon:"error", title:"Atenção", text});
+    }
+
+    // ===== Tema claro/escuro =====
+    const themeBtn = document.getElementById("themeToggle");
+    function updateThemeIcon(){
+      themeBtn.textContent = document.body.dataset.theme === "dark" ? "☀️" : "🌙";
+    }
+    themeBtn.addEventListener("click", ()=>{
+      document.body.dataset.theme = document.body.dataset.theme === "dark" ? "light" : "dark";
+      updateThemeIcon();
+      atualizarDashboard();
+    });
+    // Estado inicial tema
+    document.body.dataset.theme = "light";
+    updateThemeIcon();
+
+    // ===== Inputs e eventos =====
+    const dataHoraInput = document.getElementById("dataHora");
+    const placaInput    = document.getElementById("placa");
+    const kmIniInput    = document.getElementById("kmInicial");
+    const kmFimInput    = document.getElementById("kmFinal");
+    const fotoIniInput  = document.getElementById("fotoInicial");
+    const fotoFimInput  = document.getElementById("fotoFinal");
+    const obsInput      = document.getElementById("observacao");
+    const filtroPeriodo = document.getElementById("periodo");
+    const filtroPlaca   = document.getElementById("filtroPlaca");
+    const relatoriosDiv = document.getElementById("relatorios");
+
+    // Atualiza relógio
+    function tick(){ dataHoraInput.value = nowBR(); }
+    setInterval(tick, 1000); tick();
+
+    // Previews
+    fotoIniInput.addEventListener("change", e=>{
+      const f = e.target.files[0]; if(!f) return;
+      compressImage(f, url=>{
+        document.getElementById("previewInicial").src = url;
+        document.getElementById("previewInicial").dataset.img = url;
+      });
+    });
+    fotoFimInput.addEventListener("change", e=>{
+      const f = e.target.files[0]; if(!f) return;
+      compressImage(f, url=>{
+        document.getElementById("previewFinal").src = url;
+        document.getElementById("previewFinal").dataset.img = url;
+      });
+    });
+
+    document.getElementById("btnSalvar").addEventListener("click", salvarRegistro);
+    document.getElementById("btnExportar").addEventListener("click", exportarXLSX);
+    document.getElementById("btnApagar").addEventListener("click", apagarTodos);
+    filtroPeriodo.addEventListener("change", atualizarDashboard);
+    filtroPlaca.addEventListener("change", atualizarDashboard);
+
+    // ===== CRUD =====
+    function validar(){
+      const placa = (placaInput.value||"").trim().toUpperCase();
+      const kmI = parseFloat(kmIniInput.value);
+      const kmF = parseFloat(kmFimInput.value);
+      const fotoI = document.getElementById("previewInicial").dataset.img;
+      const fotoF = document.getElementById("previewFinal").dataset.img;
+
+      if(!placa) return showErr("Informe a placa do veículo.");
+      if(!Number.isFinite(kmI)) return showErr("Informe a quilometragem inicial.");
+      if(!Number.isFinite(kmF)) return showErr("Informe a quilometragem final.");
+      if(kmF < kmI) return showErr("A quilometragem final deve ser maior ou igual à inicial.");
+      if(!fotoI) return showErr("Anexe a foto inicial.");
+      if(!fotoF) return showErr("Anexe a foto final.");
+      return {placa, kmI, kmF, fotoI, fotoF};
+    }
+
+    function salvarRegistro(){
+      const ok = validar();
+      if(!ok) return;
+
+      const registro = {
+        dataHora: dataHoraInput.value,
+        placa: ok.placa,
+        kmInicial: ok.kmI,
+        kmFinal: ok.kmF,
+        fotoInicial: ok.fotoI,
+        fotoFinal: ok.fotoF,
+        observacao: (obsInput.value||"").trim()
+      };
+
+      registros.push(registro);
+      localStorage.setItem("registros", JSON.stringify(registros));
+      renderizarRelatorios();
+      atualizarDashboard();
+      showOk("Registro salvo", "Seu registro foi adicionado com sucesso.");
+
+      // limpar campos
+      placaInput.value = "";
+      kmIniInput.value = "";
+      kmFimInput.value = "";
+      fotoIniInput.value = "";
+      fotoFimInput.value = "";
+      obsInput.value = "";
+      document.getElementById("previewInicial").src = ""; delete document.getElementById("previewInicial").dataset.img;
+      document.getElementById("previewFinal").src = ""; delete document.getElementById("previewFinal").dataset.img;
+    }
+
+    function apagarTodos(){
+      if(registros.length === 0){
+        showErr("Não há registros para apagar."); return;
+      }
+      Swal.fire({
+        icon:"warning", title:"Apagar todos?", text:"Esta ação não pode ser desfeita.",
+        showCancelButton:true, confirmButtonText:"Apagar", cancelButtonText:"Cancelar"
+      }).then(res=>{
+        if(res.isConfirmed){
+          registros = [];
+          localStorage.removeItem("registros");
+          renderizarRelatorios();
+          atualizarDashboard();
+          showOk("Registros apagados", "Todos os registros foram removidos.");
+        }
+      });
+    }
+
+    function exportarXLSX(){
+      if(registros.length === 0){
+        showErr("Não há registros para exportar."); return;
+      }
+      const data = registros.map(r=>({
+        "Data/Hora": r.dataHora,
+        "Placa": r.placa,
+        "Km Inicial": r.kmInicial,
+        "Km Final": r.kmFinal,
+        "Km Rodado": (r.kmFinal - r.kmInicial),
+        "Observação": r.observacao || ""
+      }));
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Relatórios");
+      XLSX.writeFile(wb, "relatorios.xlsx");
+      showOk("Arquivo gerado", "Planilha Excel exportada com sucesso.");
+    }
+
+    // ===== UI =====
+    function renderizarRelatorios(){
+      relatoriosDiv.innerHTML = "";
+      registros.forEach((r,i)=>{
+        const el = document.createElement("div");
+        el.className = "relatorio";
+        el.innerHTML = `
+          <div class="relatorio-info">
+            <b>${r.dataHora}</b><br/>
+            Placa: ${r.placa}<br/>
+            Km Inicial: ${r.kmInicial} | Km Final: ${r.kmFinal} | <b>Rodado: ${r.kmFinal - r.kmInicial}</b><br/>
+            ${r.observacao ? `Obs.: ${r.observacao}<br/>` : ""}
+            <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+              ${r.fotoInicial ? `<img src="${r.fotoInicial}" alt="Inicial" />` : ""}
+              ${r.fotoFinal ? `<img src="${r.fotoFinal}" alt="Final" />` : ""}
+            </div>
+          </div>
+          <button class="btn small ghost" onclick="apagarRegistro(${i})">🗑️ Apagar</button>
+        `;
+        relatoriosDiv.appendChild(el);
+      });
+      atualizarFiltroPlacas();
+    }
+
+    function apagarRegistro(i){
+      registros.splice(i,1);
+      localStorage.setItem("registros", JSON.stringify(registros));
+      renderizarRelatorios();
+      atualizarDashboard();
+      showOk("Registro removido","O registro foi apagado.");
+    }
+
+    function atualizarFiltroPlacas(){
+      const sel = document.getElementById("filtroPlaca");
+      const atual = sel.value;
+      const placas = [...new Set(registros.map(r=>r.placa).filter(Boolean))];
+      sel.innerHTML = `<option value="todas">Todas as placas</option>`;
+      placas.forEach(p=>{
+        const o = document.createElement("option");
+        o.value = p; o.textContent = p; sel.appendChild(o);
+      });
+      if([...sel.options].some(o=>o.value===atual)) sel.value = atual;
+    }
+
+    function getChartColors(){
+      const cs = getComputedStyle(document.body);
+      return {
+        text: cs.getPropertyValue('--text').trim(),
+        grid: cs.getPropertyValue('--grid').trim()
+      };
+    }
+
+    function atualizarDashboard(){
+      let filtrados = [...registros];
+
+      // período
+      const per = filtroPeriodo.value;
+      const agora = new Date();
+      filtrados = filtrados.filter(r=>{
+        const dt = parseDataHoraBR(r.dataHora) || new Date();
+        const dias = (agora - dt)/86400000;
+        if(per==="semana") return dias<=7;
+        if(per==="mes")    return dias<=30;
+        if(per==="ano")    return dias<=365;
+        return true;
+      });
+
+      // placa
+      const placaSel = filtroPlaca.value;
+      if(placaSel !== "todas") filtrados = filtrados.filter(r=>r.placa===placaSel);
+
+      const labels = filtrados.map(r=>r.dataHora);
+      const kms = filtrados.map(r=>(+r.kmFinal || 0) - (+r.kmInicial || 0));
+
+      // métricas
+      const total = kms.reduce((a,b)=>a+(Number.isFinite(b)?b:0),0);
+      const media = kms.length ? total / kms.length : 0;
+      document.getElementById("totalKm").textContent = Math.round(total);
+      document.getElementById("mediaKm").textContent = media.toFixed(1);
+      document.getElementById("numRegistros").textContent = filtrados.length;
+
+      // gráfico
+      const ctx = document.getElementById("grafico").getContext("2d");
+      const {text, grid} = getChartColors();
+      const maxY = kms.length ? Math.max(...kms) : 0;
+
+      if(chart) chart.destroy();
+      chart = new Chart(ctx,{
+        type:"line",
+        data:{
+          labels,
+          datasets:[{
+            label:"Km Percorridos",
+            data:kms,
+            borderColor:"rgba(37,99,235,1)",
+            backgroundColor:"rgba(37,99,235,0.18)",
+            fill:true,tension:.3,pointRadius:4,pointHoverRadius:6
+          }]
+        },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{ labels:{ color:text, font:{size:12} } },
+                    tooltip:{ titleColor:text, bodyColor:text } },
+          scales:{
+            x:{ ticks:{ color:text, maxRotation:0, autoSkip:true },
+                grid:{ color:grid } },
+            y:{ beginAtZero:true,
+                suggestedMax: maxY>0 ? maxY + Math.ceil(maxY*0.15)+5 : 10,
+                ticks:{ color:text }, grid:{ color:grid } }
+          }
+        }
+      });
+    }
+
+    // ===== Inicialização =====
+    renderizarRelatorios();
+    atualizarDashboard();
+  </script>
 
 </div>
 
@@ -242,17 +537,206 @@
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCNUTWw3BLTg3S2KPqsnCfZC_aw5lqidas",
+  authDomain: "controle-de-km-86510.firebaseapp.com",
+  projectId: "controle-de-km-86510",
+  storageBucket: "controle-de-km-86510.firebasestorage.app",
+  messagingSenderId: "608090510388",
+  appId: "1:608090510388:web:3b31393fb0a80ba243a661",
+  measurementId: "G-HW52GZV66K"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+function $(sel){ return document.querySelector(sel); }
+const authScreen = $('#authScreen');
+const appRoot    = $('#appRoot');
+const msgBox     = $('#authMsg');
+
+function showAuthMessage(text, isWarn=false){
+  if(!msgBox) return;
+  msgBox.style.display = 'block';
+  msgBox.style.color = isWarn ? '#d32f2f' : '#2e7d32';
+  msgBox.textContent = text;
+}
+function hideAuthMessage(){ if(msgBox){ msgBox.style.display='none'; msgBox.textContent=''; } }
+
+function getDeviceId(){
+  try{
+    let id = localStorage.getItem('deviceId');
+    if(!id){
+      id = (crypto && crypto.randomUUID) ? crypto.randomUUID() : 'dev-' + Math.random().toString(36).slice(2);
+      localStorage.setItem('deviceId', id);
+    }
+    return id;
+  }catch(e){ return 'dev-' + Math.random().toString(36).slice(2); }
+}
+const DEVICE_ID = getDeviceId();
+let sessionUnsub = null;
+
+async function bindSingleDeviceSession(user){
+  if(!user) return;
+  const ref = db.collection('userSessions').doc(user.uid);
+  await ref.set({
+    deviceId: DEVICE_ID,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  if (sessionUnsub) sessionUnsub();
+  sessionUnsub = ref.onSnapshot(snap => {
+    const data = snap.data();
+    if (!data) return;
+    if (data.deviceId && data.deviceId !== DEVICE_ID) {
+      auth.signOut().catch(()=>{});
+      showAuthMessage('Sua conta foi acessada em outro dispositivo. Você foi desconectado aqui.', true);
+    }
+  });
+}
+
+function traduzErro(e){
+  const code = e?.code || '';
+  if (code.includes('auth/invalid-email')) return 'E-mail inválido.';
+  if (code.includes('auth/user-not-found')) return 'Usuário não encontrado.';
+  if (code.includes('auth/wrong-password')) return 'Senha incorreta.';
+  if (code.includes('auth/email-already-in-use')) return 'Este e-mail já está em uso.';
+  if (code.includes('auth/weak-password')) return 'Senha fraca. Tente outra.';
+  return 'Erro: ' + (e?.message || 'tente novamente.');
+}
+
+$('#btnEntrar')?.addEventListener('click', async () => {
+  hideAuthMessage();
+  const email = $('#authEmail').value.trim();
+  const pass  = $('#authPass').value;
+  if(!email || !pass) return showAuthMessage('Preencha e-mail e senha.', true);
+  try{
+    const cred = await auth.signInWithEmailAndPassword(email, pass);
+    if (!cred.user.emailVerified) {
+      await auth.signOut();
+      return showAuthMessage('Verifique seu e-mail antes de acessar o app.', true);
+    }
+    showAuthMessage('Login realizado!');
+  }catch(e){ showAuthMessage(traduzErro(e), true); }
+});
+
+$('#btnCadastrar')?.addEventListener('click', async () => {
+  hideAuthMessage();
+  const email = $('#authEmail').value.trim();
+  const pass  = $('#authPass').value;
+  if(!email || !pass) return showAuthMessage('Informe e-mail e crie uma senha.', true);
+  try{
+    const cred = await auth.createUserWithEmailAndPassword(email, pass);
+    await cred.user.sendEmailVerification();
+    await auth.signOut();
+    showAuthMessage('Conta criada! Enviamos um e-mail de verificação. Confirme para entrar.', false);
+  }catch(e){ showAuthMessage(traduzErro(e), true); }
+});
+
+$('#btnEsqueci')?.addEventListener('click', async () => {
+  hideAuthMessage();
+  const email = $('#authEmail').value.trim();
+  if(!email) return showAuthMessage('Digite seu e-mail para receber o link.', true);
+  try{
+    await auth.sendPasswordResetEmail(email);
+    showAuthMessage('Enviamos um link de redefinição para seu e-mail.');
+  }catch(e){ showAuthMessage(traduzErro(e), true); }
+});
+
+auth.onAuthStateChanged(async (user) => {
+  if (user) {
+    await user.reload();
+    if (!user.emailVerified) {
+      if (appRoot) appRoot.hidden = true;
+      if (authScreen) authScreen.style.display = 'flex';
+      showAuthMessage('Verifique seu e-mail antes de acessar o app.', true);
+      await auth.signOut();
+      return;
+    }
+    await bindSingleDeviceSession(user);
+    if (appRoot) appRoot.hidden = false;
+    if (authScreen) authScreen.style.display = 'none';
+  } else {
+    if (appRoot) appRoot.hidden = true;
+    if (authScreen) authScreen.style.display = 'flex';
+    if (sessionUnsub) { sessionUnsub(); sessionUnsub = null; }
+  }
+});
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('service-worker.js')
+    .then(()=>console.log('SW registrado'))
+    .catch(err=>console.log('Falha SW', err));
+}
+</script>
+
+<script>
+(function(){
+  function whenFirebase(cb){
+    if (window.firebase && firebase.auth) return cb();
+    setTimeout(function(){ whenFirebase(cb); }, 80);
+  }
+  whenFirebase(async function(){
+    try {
+      if (firebase.auth && firebase.auth.Auth && firebase.auth.Auth.Persistence) {
+        await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function(){});
+      }
+    } catch(e){ console.log('persistencia local falhou', e); }
+
+    var auth = firebase.auth();
+    var appRoot = document.querySelector('#appRoot');
+    var authScreen = document.querySelector('#authScreen');
+    var btnSair = document.querySelector('#btnSairApp');
+
+    function showApp(){
+      if (appRoot) appRoot.hidden = false;
+      if (authScreen) authScreen.style.display = 'none';
+      if (btnSair) btnSair.style.display = 'inline-flex';
+    }
+    function showLogin(){
+      if (appRoot) appRoot.hidden = true;
+      if (authScreen) authScreen.style.display = 'flex';
+      if (btnSair) btnSair.style.display = 'none';
+    }
+
+    auth.onAuthStateChanged(async function(user){
+      try{
+        if (!user) { showLogin(); return; }
+        await user.reload();
+        if (user.emailVerified) showApp();
+        else showLogin();
+      }catch(e){ console.log('onAuthStateChanged erro', e); }
+    });
+
+    var btnEntrar = document.querySelector('#btnEntrar');
+    if (btnEntrar) {
+      btnEntrar.addEventListener('click', function(){
+        var tries = 0;
+        var iv = setInterval(function(){
+          var u = auth.currentUser;
+          if (u && u.emailVerified) { showApp(); clearInterval(iv); }
+          if (++tries > 40) clearInterval(iv); // ~3.2s
+        }, 80);
+      });
+    }
+
+    if (btnSair) {
+      btnSair.addEventListener('click', function(){
+        auth.signOut().catch(function(e){ console.log('logout erro', e); }).finally(function(){ showLogin(); });
+      });
+    }
+  });
+})();
+</script>
 
 
-
-
-
-
-
-
-
-            
-            
+            <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
             <style>
                 body { font-family: Arial, sans-serif; margin: 20px; background: #f4f4f4; }
                 h2 { text-align: center; }
@@ -271,9 +755,72 @@
                 </thead>
                 <tbody></tbody>
             </table>
-            
-        
+            <script>
+                const firebaseConfig = window.opener.firebaseConfig;
+                firebase.initializeApp(firebaseConfig);
+                const db = firebase.firestore();
 
+                function loadUsersTable() {
+                    db.collection('users').get().then(snapshot => {
+                        const tbody = document.querySelector('#usersTable tbody');
+                        tbody.innerHTML = '';
+                        snapshot.forEach(doc => {
+                            const user = doc.data();
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `<td>${user.name || ''}</td><td>${user.email}</td><td>${user.revoked ? 'Revogado' : 'Ativo'}</td>
+                                <td><button onclick="toggleAccess('${doc.id}', ${user.revoked})">${user.revoked ? 'Restaurar' : 'Revogar'}</button></td>`;
+                            tbody.appendChild(tr);
+                        });
+                    });
+                }
+
+                function toggleAccess(uid, currentStatus) {
+                    db.collection('users').doc(uid).update({ revoked: !currentStatus }).then(loadUsersTable);
+                }
+                window.toggleAccess = toggleAccess;
+
+                document.getElementById('exportExcel').addEventListener('click', () => {
+                    db.collection('users').get().then(snapshot => {
+                        const data = [];
+                        snapshot.forEach(doc => data.push(doc.data()));
+                        const ws = XLSX.utils.json_to_sheet(data);
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, 'Usuários');
+                        XLSX.writeFile(wb, 'usuarios.xlsx');
+                    });
+                });
+
+                loadUsersTable();
+            </script>
+        
+<script>
+(function(){
+  if (!window.firebase || !firebase.auth || !firebase.firestore) return;
+  if (window.firebaseConfig === undefined && window.__FBCONFIG__) { window.firebaseConfig = window.__FBCONFIG__; }
+  const db = firebase.firestore();
+  firebase.auth().onAuthStateChanged(async (user) => {
+    try {
+      const btn = document.getElementById('adminBtn');
+      if (user) {
+        await db.collection('users').doc(user.uid).set({
+          uid: user.uid,
+          email: user.email,
+          name: user.displayName || '',
+          revoked: false,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        if (btn) btn.style.display = (user.email === 'alansrocha@gmail.com') ? 'inline-block' : 'none';
+      } else {
+        if (btn) btn.style.display = 'none';
+      }
+    } catch(e) { console.error('Auth sync error:', e); }
+  });
+  window.openAdminPanel = function(){
+    const w = window.open('', '_blank'); const doc = w.document; doc.open(); doc.write(`<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Painel de Administração</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <style>body{font-family:Arial,system-ui,sans-serif;background:#f6f7fb;color:#222;margin:0;padding:24px;}
 .wrap{max-width:980px;margin:0 auto;}h2{margin:0 0 12px 0;text-align:center;}
 .actions{display:flex;gap:8px;justify-content:center;margin-bottom:16px;}
@@ -284,142 +831,403 @@ th,td{padding:10px 12px;border-bottom:1px solid #eee;text-align:left;font-size:1
 <body><div class="wrap"><h2>Administração – Usuários</h2><div class="actions">
 <button id="exportXlsx">Exportar Excel</button><button class="secondary" onclick="window.close()">Fechar</button></div>
 <table><thead><tr><th>Nome</th><th>Email</th><th>Status</th><th>Ação</th></tr></thead><tbody id="rows"></tbody></table></div>
+<script>const fb = window.opener.firebase; const db = fb.firestore(); const rows = document.getElementById('rows'); let cache = [];
+function render(list){ rows.innerHTML=''; list.forEach(u=>{ const tr=document.createElement('tr'); tr.innerHTML = \`
+<td>\${u.name||''}</td><td>\${u.email||''}</td><td>\${u.revoked?'<span class="badge rev">Revogado</span>':'<span class="badge ok">Ativo</span>'}</td>
+<td><button onclick="toggle('\${u.uid}', \${!!u.revoked})">\${u.revoked?'Restaurar':'Revogar'}</button></td>\`; rows.appendChild(tr); }); }
+function listen(){ db.collection('users').onSnapshot(snap=>{ cache=[]; snap.forEach(d=>{ const data=d.data(); cache.push({uid:d.id, ...data}); }); render(cache.sort((a,b)=>(a.email||'').localeCompare(b.email||''))); }); }
+window.toggle = function(uid, isRevoked){ db.collection('users').doc(uid).update({revoked: !isRevoked}); };
+document.getElementById('exportXlsx').addEventListener('click', ()=>{ const data = cache.map(({uid,name,email,revoked})=>({uid,name,email,status: revoked?'Revogado':'Ativo'})); const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Usuarios'); XLSX.writeFile(wb, 'usuarios.xlsx'); });
+listen();</script>
+<script>
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const div = document.createElement('div');
+  div.innerHTML = '<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#fff;padding:10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.3);z-index:9999;">' +
+                  '<span>Instale o aplicativo</span> <button id="installBtn" style="margin-left:10px;">Instalar</button></div>';
+  document.body.appendChild(div);
+  document.getElementById('installBtn').addEventListener('click', () => {
+    div.remove();
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.finally(() => deferredPrompt = null);
+  });
+});
 
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('service-worker.js', { scope: './' });
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing;
+        if (newSW) {
+          newSW.addEventListener('statechange', () => {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        }
+      });
+      navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
+    } catch (e) {
+      console.log('SW registration failed', e);
+    }
+  });
+}
+</script>
+
+
+<div id="adminPanel" style="display:none;">
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+    <button id="backBtn" class="btn small">Voltar</button>
+    <button id="exportExcel" class="btn small">Exportar Excel</button>
+  </div>
+  <div class="table-wrapper">
+    <table id="userTable" class="table">
+      <thead>
+        <tr><th>Nome</th><th>Email</th><th>Status</th><th>Ação</th></tr>
+      </thead>
+      <tbody id="userList"></tbody>
+    </table>
+  </div>
+</div>
 
 
 <script>
-firebase.auth().onAuthStateChanged(user => {
-    if(user && user.email === "alansrocha@gmail.com") {
-        document.getElementById("adminBtn").style.display = "block";
+(function(){
+  // Aguarda DOM
+  document.addEventListener('DOMContentLoaded', function(){
+    var adminBtn = document.getElementById('adminBtn');
+    // Se não existe, cria no topo do mainContent (sem quebrar seu layout)
+    if(!adminBtn){
+      var main = document.getElementById('mainContent') || document.body;
+      var btn = document.createElement('button');
+      btn.id = 'adminBtn';
+      btn.textContent = 'Administração';
+      btn.className = 'btn small';
+      btn.style.display = 'none';
+      // insere no topo
+      if (main.firstElementChild) {
+        main.insertBefore(btn, main.firstElementChild);
+      } else {
+        main.appendChild(btn);
+      }
+      adminBtn = btn;
     }
-});
 
-document.getElementById("adminBtn").addEventListener("click", () => {
-    document.getElementById("mainContent").style.display = "none";
-    document.getElementById("adminPanel").style.display = "block";
-    loadUsers();
-});
-
-document.getElementById("backBtn").addEventListener("click", () => {
-    document.getElementById("adminPanel").style.display = "none";
-    document.getElementById("mainContent").style.display = "block";
-});
-
-function loadUsers() {
-    const tbody = document.getElementById("userList");
-    tbody.innerHTML = "";
-    db.collection("users").get().then(snapshot => {
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.revoked === undefined) {
-                db.collection("users").doc(doc.id).update({ revoked: false });
-                data.revoked = false;
-            }
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-                <td>${data.name || ""}</td>
-                <td>${data.email}</td>
-                <td>${data.revoked ? "Revogado" : "Ativo"}</td>
-                <td>
-                    <button onclick="toggleAccess('${doc.id}', ${!data.revoked})">
-                        ${data.revoked ? "Restaurar" : "Revogar"}
-                    </button>
-                </td>`;
-            tbody.appendChild(tr);
+    // Lógica de exibição apenas para o admin
+    try {
+      var _auth = (typeof auth !== 'undefined') ? auth : (firebase && firebase.auth ? firebase.auth() : null);
+      var _db   = (typeof db   !== 'undefined') ? db   : (firebase && firebase.firestore ? firebase.firestore() : null);
+      window._dbRef = _db; // expõe para as funções
+      if(_auth){
+        _auth.onAuthStateChanged(function(user){
+          if(user && user.email === 'alansrocha@gmail.com'){
+            adminBtn.style.display = 'inline-block';
+          }
         });
-    });
-}
+      }
+    } catch(e){ console.warn('Auth/DB não inicializados ainda:', e); }
 
-function toggleAccess(uid, revoke) {
-    db.collection("users").doc(uid).update({ revoked: revoke }).then(loadUsers);
-}
+    // Ações do painel
+    function loadUsers(){
+      var tbody = document.getElementById('userList');
+      tbody.innerHTML = '';
+      var _db = window._dbRef;
+      if(!_db){ console.error('Firestore não disponível'); return; }
+      _db.collection('users').get().then(function(snapshot){
+        snapshot.forEach(function(doc){
+          var data = doc.data() || {};
+          if (data.revoked === undefined){
+            _db.collection('users').doc(doc.id).update({ revoked: false });
+            data.revoked = false;
+          }
+          var tr = document.createElement('tr');
+          tr.innerHTML = '<td>'+(data.name||'')+'</td>'+
+                         '<td>'+(data.email||'')+'</td>'+
+                         '<td>'+(data.revoked ? 'Revogado' : 'Ativo')+'</td>'+
+                         '<td><button class="btn xsmall" data-id="'+doc.id+'" data-next="'+(!data.revoked)+'">'+
+                         (data.revoked ? 'Restaurar' : 'Revogar')+'</button></td>';
+          tbody.appendChild(tr);
+        });
 
-document.getElementById("exportExcel").addEventListener("click", () => {
-    let csv = "Nome,Email,Status\n";
-    document.querySelectorAll("#userList tr").forEach(row => {
-        const cols = row.querySelectorAll("td");
-        csv += Array.from(cols).map(td => td.innerText).join(",") + "\n";
+        // Delegação de eventos para os botões da tabela
+        tbody.querySelectorAll('button[data-id]').forEach(function(b){
+          b.addEventListener('click', function(ev){
+            var uid = ev.currentTarget.getAttribute('data-id');
+            var val = ev.currentTarget.getAttribute('data-next') === 'true';
+            _db.collection('users').doc(uid).update({ revoked: val }).then(loadUsers);
+          });
+        });
+      });
+    }
+
+    // Botão Exportar
+    var exportBtn = document.getElementById('exportExcel');
+    if(exportBtn){
+      exportBtn.addEventListener('click', function(){
+        var csv = 'Nome,Email,Status
+';
+        document.querySelectorAll('#userList tr').forEach(function(row){
+          var cols = row.querySelectorAll('td');
+          var line = Array.prototype.map.call(cols, function(td){ return td.innerText; }).join(',');
+          csv += line + '
+';
+        });
+        var blob = new Blob([csv], {type:'text/csv'});
+        var link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'usuarios.csv';
+        link.click();
+      });
+    }
+
+    // Botões Admin/Voltar
+    adminBtn && adminBtn.addEventListener('click', function(){
+      var main = document.getElementById('mainContent') || document.body;
+      var panel = document.getElementById('adminPanel');
+      if(panel){
+        main.style.display = 'none';
+        panel.style.display = 'block';
+        loadUsers();
+      }
     });
-    const blob = new Blob([csv], { type: "text/csv" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "usuarios.csv";
-    link.click();
+
+    var backBtn = document.getElementById('backBtn');
+    if(backBtn){
+      backBtn.addEventListener('click', function(){
+        var main = document.getElementById('mainContent') || document.body;
+        var panel = document.getElementById('adminPanel');
+        if(panel){
+          panel.style.display = 'none';
+          main.style.display = 'block';
+        }
+      });
+    }
+  });
+})();
+</script>
+
+
+<script>
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const btnInstalar = document.createElement('button');
+  btnInstalar.textContent = '📲 Instale o aplicativo';
+  btnInstalar.className = 'btn small';
+  btnInstalar.style.marginTop = '10px';
+  const container = document.querySelector('.container') || document.getElementById('mainContent') || document.body;
+  container.prepend(btnInstalar);
+  btnInstalar.addEventListener('click', async () => {
+    btnInstalar.remove();
+    deferredPrompt.prompt();
+    const choice = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+  });
 });
 </script>
 
-</body>
-</html>`); doc.close();
+</body></html>`); doc.close();
   };
 })();
 </script>
 
 
+<script>
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const div = document.createElement('div');
+  div.innerHTML = '<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#fff;padding:10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.3);z-index:9999;">' +
+                  '<span>Instale o aplicativo</span> <button id="installBtn" style="margin-left:10px;">Instalar</button></div>';
+  document.body.appendChild(div);
+  document.getElementById('installBtn').addEventListener('click', () => {
+    div.remove();
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.finally(() => deferredPrompt = null);
+  });
+});
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('service-worker.js', { scope: './' });
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing;
+        if (newSW) {
+          newSW.addEventListener('statechange', () => {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        }
+      });
+      navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
+    } catch (e) {
+      console.log('SW registration failed', e);
+    }
+  });
+}
+</script>
+
+
+<div id="adminPanel" style="display:none;">
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+    <button id="backBtn" class="btn small">Voltar</button>
+    <button id="exportExcel" class="btn small">Exportar Excel</button>
+  </div>
+  <div class="table-wrapper">
+    <table id="userTable" class="table">
+      <thead>
+        <tr><th>Nome</th><th>Email</th><th>Status</th><th>Ação</th></tr>
+      </thead>
+      <tbody id="userList"></tbody>
+    </table>
+  </div>
+</div>
 
 
 <script>
-firebase.auth().onAuthStateChanged(user => {
-    if(user && user.email === "alansrocha@gmail.com") {
-        document.getElementById("adminBtn").style.display = "block";
+(function(){
+  // Aguarda DOM
+  document.addEventListener('DOMContentLoaded', function(){
+    var adminBtn = document.getElementById('adminBtn');
+    // Se não existe, cria no topo do mainContent (sem quebrar seu layout)
+    if(!adminBtn){
+      var main = document.getElementById('mainContent') || document.body;
+      var btn = document.createElement('button');
+      btn.id = 'adminBtn';
+      btn.textContent = 'Administração';
+      btn.className = 'btn small';
+      btn.style.display = 'none';
+      // insere no topo
+      if (main.firstElementChild) {
+        main.insertBefore(btn, main.firstElementChild);
+      } else {
+        main.appendChild(btn);
+      }
+      adminBtn = btn;
     }
-});
 
-document.getElementById("adminBtn").addEventListener("click", () => {
-    document.getElementById("mainContent").style.display = "none";
-    document.getElementById("adminPanel").style.display = "block";
-    loadUsers();
-});
-
-document.getElementById("backBtn").addEventListener("click", () => {
-    document.getElementById("adminPanel").style.display = "none";
-    document.getElementById("mainContent").style.display = "block";
-});
-
-function loadUsers() {
-    const tbody = document.getElementById("userList");
-    tbody.innerHTML = "";
-    db.collection("users").get().then(snapshot => {
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.revoked === undefined) {
-                db.collection("users").doc(doc.id).update({ revoked: false });
-                data.revoked = false;
-            }
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-                <td>${data.name || ""}</td>
-                <td>${data.email}</td>
-                <td>${data.revoked ? "Revogado" : "Ativo"}</td>
-                <td>
-                    <button onclick="toggleAccess('${doc.id}', ${!data.revoked})">
-                        ${data.revoked ? "Restaurar" : "Revogar"}
-                    </button>
-                </td>`;
-            tbody.appendChild(tr);
+    // Lógica de exibição apenas para o admin
+    try {
+      var _auth = (typeof auth !== 'undefined') ? auth : (firebase && firebase.auth ? firebase.auth() : null);
+      var _db   = (typeof db   !== 'undefined') ? db   : (firebase && firebase.firestore ? firebase.firestore() : null);
+      window._dbRef = _db; // expõe para as funções
+      if(_auth){
+        _auth.onAuthStateChanged(function(user){
+          if(user && user.email === 'alansrocha@gmail.com'){
+            adminBtn.style.display = 'inline-block';
+          }
         });
-    });
-}
+      }
+    } catch(e){ console.warn('Auth/DB não inicializados ainda:', e); }
 
-function toggleAccess(uid, revoke) {
-    db.collection("users").doc(uid).update({ revoked: revoke }).then(loadUsers);
-}
+    // Ações do painel
+    function loadUsers(){
+      var tbody = document.getElementById('userList');
+      tbody.innerHTML = '';
+      var _db = window._dbRef;
+      if(!_db){ console.error('Firestore não disponível'); return; }
+      _db.collection('users').get().then(function(snapshot){
+        snapshot.forEach(function(doc){
+          var data = doc.data() || {};
+          if (data.revoked === undefined){
+            _db.collection('users').doc(doc.id).update({ revoked: false });
+            data.revoked = false;
+          }
+          var tr = document.createElement('tr');
+          tr.innerHTML = '<td>'+(data.name||'')+'</td>'+
+                         '<td>'+(data.email||'')+'</td>'+
+                         '<td>'+(data.revoked ? 'Revogado' : 'Ativo')+'</td>'+
+                         '<td><button class="btn xsmall" data-id="'+doc.id+'" data-next="'+(!data.revoked)+'">'+
+                         (data.revoked ? 'Restaurar' : 'Revogar')+'</button></td>';
+          tbody.appendChild(tr);
+        });
 
-document.getElementById("exportExcel").addEventListener("click", () => {
-    let csv = "Nome,Email,Status\n";
-    document.querySelectorAll("#userList tr").forEach(row => {
-        const cols = row.querySelectorAll("td");
-        csv += Array.from(cols).map(td => td.innerText).join(",") + "\n";
+        // Delegação de eventos para os botões da tabela
+        tbody.querySelectorAll('button[data-id]').forEach(function(b){
+          b.addEventListener('click', function(ev){
+            var uid = ev.currentTarget.getAttribute('data-id');
+            var val = ev.currentTarget.getAttribute('data-next') === 'true';
+            _db.collection('users').doc(uid).update({ revoked: val }).then(loadUsers);
+          });
+        });
+      });
+    }
+
+    // Botão Exportar
+    var exportBtn = document.getElementById('exportExcel');
+    if(exportBtn){
+      exportBtn.addEventListener('click', function(){
+        var csv = 'Nome,Email,Status
+';
+        document.querySelectorAll('#userList tr').forEach(function(row){
+          var cols = row.querySelectorAll('td');
+          var line = Array.prototype.map.call(cols, function(td){ return td.innerText; }).join(',');
+          csv += line + '
+';
+        });
+        var blob = new Blob([csv], {type:'text/csv'});
+        var link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'usuarios.csv';
+        link.click();
+      });
+    }
+
+    // Botões Admin/Voltar
+    adminBtn && adminBtn.addEventListener('click', function(){
+      var main = document.getElementById('mainContent') || document.body;
+      var panel = document.getElementById('adminPanel');
+      if(panel){
+        main.style.display = 'none';
+        panel.style.display = 'block';
+        loadUsers();
+      }
     });
-    const blob = new Blob([csv], { type: "text/csv" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "usuarios.csv";
-    link.click();
+
+    var backBtn = document.getElementById('backBtn');
+    if(backBtn){
+      backBtn.addEventListener('click', function(){
+        var main = document.getElementById('mainContent') || document.body;
+        var panel = document.getElementById('adminPanel');
+        if(panel){
+          panel.style.display = 'none';
+          main.style.display = 'block';
+        }
+      });
+    }
+  });
+})();
+</script>
+
+
+<script>
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const btnInstalar = document.createElement('button');
+  btnInstalar.textContent = '📲 Instale o aplicativo';
+  btnInstalar.className = 'btn small';
+  btnInstalar.style.marginTop = '10px';
+  const container = document.querySelector('.container') || document.getElementById('mainContent') || document.body;
+  container.prepend(btnInstalar);
+  btnInstalar.addEventListener('click', async () => {
+    btnInstalar.remove();
+    deferredPrompt.prompt();
+    const choice = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+  });
 });
 </script>
 
 </body>
-
         </html>
     `);
 }
@@ -453,7 +1261,34 @@ async function toggleAccess(uid, revoke) {
 </script>
 
 
-
+<script>
+(function(){
+  if (!window.firebase || !firebase.auth || !firebase.firestore) return;
+  if (window.firebaseConfig === undefined && window.__FBCONFIG__) { window.firebaseConfig = window.__FBCONFIG__; }
+  const db = firebase.firestore();
+  firebase.auth().onAuthStateChanged(async (user) => {
+    try {
+      const btn = document.getElementById('adminBtn');
+      if (user) {
+        await db.collection('users').doc(user.uid).set({
+          uid: user.uid,
+          email: user.email,
+          name: user.displayName || '',
+          revoked: false,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        if (btn) btn.style.display = (user.email === 'alansrocha@gmail.com') ? 'inline-block' : 'none';
+      } else {
+        if (btn) btn.style.display = 'none';
+      }
+    } catch(e) { console.error('Auth sync error:', e); }
+  });
+  window.openAdminPanel = function(){
+    const w = window.open('', '_blank'); const doc = w.document; doc.open(); doc.write(`<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Painel de Administração</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <style>body{font-family:Arial,system-ui,sans-serif;background:#f6f7fb;color:#222;margin:0;padding:24px;}
 .wrap{max-width:980px;margin:0 auto;}h2{margin:0 0 12px 0;text-align:center;}
 .actions{display:flex;gap:8px;justify-content:center;margin-bottom:16px;}
@@ -464,140 +1299,401 @@ th,td{padding:10px 12px;border-bottom:1px solid #eee;text-align:left;font-size:1
 <body><div class="wrap"><h2>Administração – Usuários</h2><div class="actions">
 <button id="exportXlsx">Exportar Excel</button><button class="secondary" onclick="window.close()">Fechar</button></div>
 <table><thead><tr><th>Nome</th><th>Email</th><th>Status</th><th>Ação</th></tr></thead><tbody id="rows"></tbody></table></div>
+<script>const fb = window.opener.firebase; const db = fb.firestore(); const rows = document.getElementById('rows'); let cache = [];
+function render(list){ rows.innerHTML=''; list.forEach(u=>{ const tr=document.createElement('tr'); tr.innerHTML = \`
+<td>\${u.name||''}</td><td>\${u.email||''}</td><td>\${u.revoked?'<span class="badge rev">Revogado</span>':'<span class="badge ok">Ativo</span>'}</td>
+<td><button onclick="toggle('\${u.uid}', \${!!u.revoked})">\${u.revoked?'Restaurar':'Revogar'}</button></td>\`; rows.appendChild(tr); }); }
+function listen(){ db.collection('users').onSnapshot(snap=>{ cache=[]; snap.forEach(d=>{ const data=d.data(); cache.push({uid:d.id, ...data}); }); render(cache.sort((a,b)=>(a.email||'').localeCompare(b.email||''))); }); }
+window.toggle = function(uid, isRevoked){ db.collection('users').doc(uid).update({revoked: !isRevoked}); };
+document.getElementById('exportXlsx').addEventListener('click', ()=>{ const data = cache.map(({uid,name,email,revoked})=>({uid,name,email,status: revoked?'Revogado':'Ativo'})); const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Usuarios'); XLSX.writeFile(wb, 'usuarios.xlsx'); });
+listen();</script>
+<script>
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const div = document.createElement('div');
+  div.innerHTML = '<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#fff;padding:10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.3);z-index:9999;">' +
+                  '<span>Instale o aplicativo</span> <button id="installBtn" style="margin-left:10px;">Instalar</button></div>';
+  document.body.appendChild(div);
+  document.getElementById('installBtn').addEventListener('click', () => {
+    div.remove();
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.finally(() => deferredPrompt = null);
+  });
+});
 
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('service-worker.js', { scope: './' });
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing;
+        if (newSW) {
+          newSW.addEventListener('statechange', () => {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        }
+      });
+      navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
+    } catch (e) {
+      console.log('SW registration failed', e);
+    }
+  });
+}
+</script>
+
+
+<div id="adminPanel" style="display:none;">
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+    <button id="backBtn" class="btn small">Voltar</button>
+    <button id="exportExcel" class="btn small">Exportar Excel</button>
+  </div>
+  <div class="table-wrapper">
+    <table id="userTable" class="table">
+      <thead>
+        <tr><th>Nome</th><th>Email</th><th>Status</th><th>Ação</th></tr>
+      </thead>
+      <tbody id="userList"></tbody>
+    </table>
+  </div>
+</div>
 
 
 <script>
-firebase.auth().onAuthStateChanged(user => {
-    if(user && user.email === "alansrocha@gmail.com") {
-        document.getElementById("adminBtn").style.display = "block";
+(function(){
+  // Aguarda DOM
+  document.addEventListener('DOMContentLoaded', function(){
+    var adminBtn = document.getElementById('adminBtn');
+    // Se não existe, cria no topo do mainContent (sem quebrar seu layout)
+    if(!adminBtn){
+      var main = document.getElementById('mainContent') || document.body;
+      var btn = document.createElement('button');
+      btn.id = 'adminBtn';
+      btn.textContent = 'Administração';
+      btn.className = 'btn small';
+      btn.style.display = 'none';
+      // insere no topo
+      if (main.firstElementChild) {
+        main.insertBefore(btn, main.firstElementChild);
+      } else {
+        main.appendChild(btn);
+      }
+      adminBtn = btn;
     }
-});
 
-document.getElementById("adminBtn").addEventListener("click", () => {
-    document.getElementById("mainContent").style.display = "none";
-    document.getElementById("adminPanel").style.display = "block";
-    loadUsers();
-});
-
-document.getElementById("backBtn").addEventListener("click", () => {
-    document.getElementById("adminPanel").style.display = "none";
-    document.getElementById("mainContent").style.display = "block";
-});
-
-function loadUsers() {
-    const tbody = document.getElementById("userList");
-    tbody.innerHTML = "";
-    db.collection("users").get().then(snapshot => {
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.revoked === undefined) {
-                db.collection("users").doc(doc.id).update({ revoked: false });
-                data.revoked = false;
-            }
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-                <td>${data.name || ""}</td>
-                <td>${data.email}</td>
-                <td>${data.revoked ? "Revogado" : "Ativo"}</td>
-                <td>
-                    <button onclick="toggleAccess('${doc.id}', ${!data.revoked})">
-                        ${data.revoked ? "Restaurar" : "Revogar"}
-                    </button>
-                </td>`;
-            tbody.appendChild(tr);
+    // Lógica de exibição apenas para o admin
+    try {
+      var _auth = (typeof auth !== 'undefined') ? auth : (firebase && firebase.auth ? firebase.auth() : null);
+      var _db   = (typeof db   !== 'undefined') ? db   : (firebase && firebase.firestore ? firebase.firestore() : null);
+      window._dbRef = _db; // expõe para as funções
+      if(_auth){
+        _auth.onAuthStateChanged(function(user){
+          if(user && user.email === 'alansrocha@gmail.com'){
+            adminBtn.style.display = 'inline-block';
+          }
         });
-    });
-}
+      }
+    } catch(e){ console.warn('Auth/DB não inicializados ainda:', e); }
 
-function toggleAccess(uid, revoke) {
-    db.collection("users").doc(uid).update({ revoked: revoke }).then(loadUsers);
-}
+    // Ações do painel
+    function loadUsers(){
+      var tbody = document.getElementById('userList');
+      tbody.innerHTML = '';
+      var _db = window._dbRef;
+      if(!_db){ console.error('Firestore não disponível'); return; }
+      _db.collection('users').get().then(function(snapshot){
+        snapshot.forEach(function(doc){
+          var data = doc.data() || {};
+          if (data.revoked === undefined){
+            _db.collection('users').doc(doc.id).update({ revoked: false });
+            data.revoked = false;
+          }
+          var tr = document.createElement('tr');
+          tr.innerHTML = '<td>'+(data.name||'')+'</td>'+
+                         '<td>'+(data.email||'')+'</td>'+
+                         '<td>'+(data.revoked ? 'Revogado' : 'Ativo')+'</td>'+
+                         '<td><button class="btn xsmall" data-id="'+doc.id+'" data-next="'+(!data.revoked)+'">'+
+                         (data.revoked ? 'Restaurar' : 'Revogar')+'</button></td>';
+          tbody.appendChild(tr);
+        });
 
-document.getElementById("exportExcel").addEventListener("click", () => {
-    let csv = "Nome,Email,Status\n";
-    document.querySelectorAll("#userList tr").forEach(row => {
-        const cols = row.querySelectorAll("td");
-        csv += Array.from(cols).map(td => td.innerText).join(",") + "\n";
+        // Delegação de eventos para os botões da tabela
+        tbody.querySelectorAll('button[data-id]').forEach(function(b){
+          b.addEventListener('click', function(ev){
+            var uid = ev.currentTarget.getAttribute('data-id');
+            var val = ev.currentTarget.getAttribute('data-next') === 'true';
+            _db.collection('users').doc(uid).update({ revoked: val }).then(loadUsers);
+          });
+        });
+      });
+    }
+
+    // Botão Exportar
+    var exportBtn = document.getElementById('exportExcel');
+    if(exportBtn){
+      exportBtn.addEventListener('click', function(){
+        var csv = 'Nome,Email,Status
+';
+        document.querySelectorAll('#userList tr').forEach(function(row){
+          var cols = row.querySelectorAll('td');
+          var line = Array.prototype.map.call(cols, function(td){ return td.innerText; }).join(',');
+          csv += line + '
+';
+        });
+        var blob = new Blob([csv], {type:'text/csv'});
+        var link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'usuarios.csv';
+        link.click();
+      });
+    }
+
+    // Botões Admin/Voltar
+    adminBtn && adminBtn.addEventListener('click', function(){
+      var main = document.getElementById('mainContent') || document.body;
+      var panel = document.getElementById('adminPanel');
+      if(panel){
+        main.style.display = 'none';
+        panel.style.display = 'block';
+        loadUsers();
+      }
     });
-    const blob = new Blob([csv], { type: "text/csv" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "usuarios.csv";
-    link.click();
+
+    var backBtn = document.getElementById('backBtn');
+    if(backBtn){
+      backBtn.addEventListener('click', function(){
+        var main = document.getElementById('mainContent') || document.body;
+        var panel = document.getElementById('adminPanel');
+        if(panel){
+          panel.style.display = 'none';
+          main.style.display = 'block';
+        }
+      });
+    }
+  });
+})();
+</script>
+
+
+<script>
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const btnInstalar = document.createElement('button');
+  btnInstalar.textContent = '📲 Instale o aplicativo';
+  btnInstalar.className = 'btn small';
+  btnInstalar.style.marginTop = '10px';
+  const container = document.querySelector('.container') || document.getElementById('mainContent') || document.body;
+  container.prepend(btnInstalar);
+  btnInstalar.addEventListener('click', async () => {
+    btnInstalar.remove();
+    deferredPrompt.prompt();
+    const choice = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+  });
 });
 </script>
 
-</body>
-</html>`); doc.close();
+</body></html>`); doc.close();
   };
 })();
 </script>
 
 
+<script>
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const div = document.createElement('div');
+  div.innerHTML = '<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#fff;padding:10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.3);z-index:9999;">' +
+                  '<span>Instale o aplicativo</span> <button id="installBtn" style="margin-left:10px;">Instalar</button></div>';
+  document.body.appendChild(div);
+  document.getElementById('installBtn').addEventListener('click', () => {
+    div.remove();
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.finally(() => deferredPrompt = null);
+  });
+});
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('service-worker.js', { scope: './' });
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing;
+        if (newSW) {
+          newSW.addEventListener('statechange', () => {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        }
+      });
+      navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
+    } catch (e) {
+      console.log('SW registration failed', e);
+    }
+  });
+}
+</script>
+
+
+<div id="adminPanel" style="display:none;">
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+    <button id="backBtn" class="btn small">Voltar</button>
+    <button id="exportExcel" class="btn small">Exportar Excel</button>
+  </div>
+  <div class="table-wrapper">
+    <table id="userTable" class="table">
+      <thead>
+        <tr><th>Nome</th><th>Email</th><th>Status</th><th>Ação</th></tr>
+      </thead>
+      <tbody id="userList"></tbody>
+    </table>
+  </div>
+</div>
 
 
 <script>
-firebase.auth().onAuthStateChanged(user => {
-    if(user && user.email === "alansrocha@gmail.com") {
-        document.getElementById("adminBtn").style.display = "block";
+(function(){
+  // Aguarda DOM
+  document.addEventListener('DOMContentLoaded', function(){
+    var adminBtn = document.getElementById('adminBtn');
+    // Se não existe, cria no topo do mainContent (sem quebrar seu layout)
+    if(!adminBtn){
+      var main = document.getElementById('mainContent') || document.body;
+      var btn = document.createElement('button');
+      btn.id = 'adminBtn';
+      btn.textContent = 'Administração';
+      btn.className = 'btn small';
+      btn.style.display = 'none';
+      // insere no topo
+      if (main.firstElementChild) {
+        main.insertBefore(btn, main.firstElementChild);
+      } else {
+        main.appendChild(btn);
+      }
+      adminBtn = btn;
     }
-});
 
-document.getElementById("adminBtn").addEventListener("click", () => {
-    document.getElementById("mainContent").style.display = "none";
-    document.getElementById("adminPanel").style.display = "block";
-    loadUsers();
-});
-
-document.getElementById("backBtn").addEventListener("click", () => {
-    document.getElementById("adminPanel").style.display = "none";
-    document.getElementById("mainContent").style.display = "block";
-});
-
-function loadUsers() {
-    const tbody = document.getElementById("userList");
-    tbody.innerHTML = "";
-    db.collection("users").get().then(snapshot => {
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.revoked === undefined) {
-                db.collection("users").doc(doc.id).update({ revoked: false });
-                data.revoked = false;
-            }
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-                <td>${data.name || ""}</td>
-                <td>${data.email}</td>
-                <td>${data.revoked ? "Revogado" : "Ativo"}</td>
-                <td>
-                    <button onclick="toggleAccess('${doc.id}', ${!data.revoked})">
-                        ${data.revoked ? "Restaurar" : "Revogar"}
-                    </button>
-                </td>`;
-            tbody.appendChild(tr);
+    // Lógica de exibição apenas para o admin
+    try {
+      var _auth = (typeof auth !== 'undefined') ? auth : (firebase && firebase.auth ? firebase.auth() : null);
+      var _db   = (typeof db   !== 'undefined') ? db   : (firebase && firebase.firestore ? firebase.firestore() : null);
+      window._dbRef = _db; // expõe para as funções
+      if(_auth){
+        _auth.onAuthStateChanged(function(user){
+          if(user && user.email === 'alansrocha@gmail.com'){
+            adminBtn.style.display = 'inline-block';
+          }
         });
-    });
-}
+      }
+    } catch(e){ console.warn('Auth/DB não inicializados ainda:', e); }
 
-function toggleAccess(uid, revoke) {
-    db.collection("users").doc(uid).update({ revoked: revoke }).then(loadUsers);
-}
+    // Ações do painel
+    function loadUsers(){
+      var tbody = document.getElementById('userList');
+      tbody.innerHTML = '';
+      var _db = window._dbRef;
+      if(!_db){ console.error('Firestore não disponível'); return; }
+      _db.collection('users').get().then(function(snapshot){
+        snapshot.forEach(function(doc){
+          var data = doc.data() || {};
+          if (data.revoked === undefined){
+            _db.collection('users').doc(doc.id).update({ revoked: false });
+            data.revoked = false;
+          }
+          var tr = document.createElement('tr');
+          tr.innerHTML = '<td>'+(data.name||'')+'</td>'+
+                         '<td>'+(data.email||'')+'</td>'+
+                         '<td>'+(data.revoked ? 'Revogado' : 'Ativo')+'</td>'+
+                         '<td><button class="btn xsmall" data-id="'+doc.id+'" data-next="'+(!data.revoked)+'">'+
+                         (data.revoked ? 'Restaurar' : 'Revogar')+'</button></td>';
+          tbody.appendChild(tr);
+        });
 
-document.getElementById("exportExcel").addEventListener("click", () => {
-    let csv = "Nome,Email,Status\n";
-    document.querySelectorAll("#userList tr").forEach(row => {
-        const cols = row.querySelectorAll("td");
-        csv += Array.from(cols).map(td => td.innerText).join(",") + "\n";
+        // Delegação de eventos para os botões da tabela
+        tbody.querySelectorAll('button[data-id]').forEach(function(b){
+          b.addEventListener('click', function(ev){
+            var uid = ev.currentTarget.getAttribute('data-id');
+            var val = ev.currentTarget.getAttribute('data-next') === 'true';
+            _db.collection('users').doc(uid).update({ revoked: val }).then(loadUsers);
+          });
+        });
+      });
+    }
+
+    // Botão Exportar
+    var exportBtn = document.getElementById('exportExcel');
+    if(exportBtn){
+      exportBtn.addEventListener('click', function(){
+        var csv = 'Nome,Email,Status
+';
+        document.querySelectorAll('#userList tr').forEach(function(row){
+          var cols = row.querySelectorAll('td');
+          var line = Array.prototype.map.call(cols, function(td){ return td.innerText; }).join(',');
+          csv += line + '
+';
+        });
+        var blob = new Blob([csv], {type:'text/csv'});
+        var link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'usuarios.csv';
+        link.click();
+      });
+    }
+
+    // Botões Admin/Voltar
+    adminBtn && adminBtn.addEventListener('click', function(){
+      var main = document.getElementById('mainContent') || document.body;
+      var panel = document.getElementById('adminPanel');
+      if(panel){
+        main.style.display = 'none';
+        panel.style.display = 'block';
+        loadUsers();
+      }
     });
-    const blob = new Blob([csv], { type: "text/csv" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "usuarios.csv";
-    link.click();
+
+    var backBtn = document.getElementById('backBtn');
+    if(backBtn){
+      backBtn.addEventListener('click', function(){
+        var main = document.getElementById('mainContent') || document.body;
+        var panel = document.getElementById('adminPanel');
+        if(panel){
+          panel.style.display = 'none';
+          main.style.display = 'block';
+        }
+      });
+    }
+  });
+})();
+</script>
+
+
+<script>
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const btnInstalar = document.createElement('button');
+  btnInstalar.textContent = '📲 Instale o aplicativo';
+  btnInstalar.className = 'btn small';
+  btnInstalar.style.marginTop = '10px';
+  const container = document.querySelector('.container') || document.getElementById('mainContent') || document.body;
+  container.prepend(btnInstalar);
+  btnInstalar.addEventListener('click', async () => {
+    btnInstalar.remove();
+    deferredPrompt.prompt();
+    const choice = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+  });
 });
 </script>
 
 </body>
-
 </html>
