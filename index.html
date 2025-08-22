@@ -288,7 +288,7 @@ document.getElementById('exportUsersXlsx').addEventListener('click',()=>{
 let deferredPrompt;window.addEventListener('beforeinstallprompt',(e)=>{e.preventDefault();deferredPrompt=e;const b=document.createElement('button');b.textContent='📲 Instale o aplicativo';b.className='btn small';b.style.marginTop='10px';const c=document.querySelector('.container')||document.body;c.prepend(b);b.addEventListener('click',async()=>{b.remove();deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null})});
 // Service worker
 if('serviceWorker'in navigator){
-  navigator.serviceWorker.register('service-worker-v11.js').then(reg=>{
+  navigator.serviceWorker.register('service-worker-v9.js').then(reg=>{
     if(reg.waiting){reg.waiting.postMessage({type:'SKIP_WAITING'})}
     reg.addEventListener('updatefound',()=>{const nw=reg.installing;nw?.addEventListener('statechange',()=>{if(nw.state==='installed'&&navigator.serviceWorker.controller){}})});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{})
