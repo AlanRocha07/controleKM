@@ -264,7 +264,8 @@ document.body.addEventListener('click',e=>{
     db.collection('users').doc(id).update({revoked:nextVal}).catch((err)=>{
       console.warn('[admin] update revoked error', err);
       showErr('Sem permissão para alterar este usuário.');
-    }
+    });
+  }
 });
 
 document.getElementById('exportUsersXlsx').addEventListener('click',()=>{
