@@ -255,6 +255,8 @@ function renderUsers(){
     tr.innerHTML=`<td>${u.name||''}</td><td>${u.email||''}</td><td>${revoked?'<span class="badge rev">Revogado</span>':'<span class="badge ok">Ativo</span>'}</td><td><button class="btn small toggle" data-id="${u.id}" data-next="${(!revoked)}">${revoked?'Restaurar':'Revogar'}</button></td>`;
     usersTbody.appendChild(tr);
   });
+}
+
 document.body.addEventListener('click',e=>{
   if(e.target&&e.target.classList.contains('toggle')){
     const id=e.target.getAttribute('data-id');
@@ -268,6 +270,8 @@ document.getElementById('exportUsersXlsx').addEventListener('click',()=>{
   const ws=XLSX.utils.json_to_sheet(data);
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Usuarios');
   XLSX.writeFile(wb,'usuarios.xlsx');
+});
+
 // PWA install CTA
 let deferredPrompt;window.addEventListener('beforeinstallprompt',(e)=>{e.preventDefault();deferredPrompt=e;const b=document.createElement('button');b.textContent='📲 Instale o aplicativo';b.className='btn small';b.style.marginTop='10px';const c=document.querySelector('.container')||document.body;c.prepend(b);b.addEventListener('click',async()=>{b.remove();deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null})});
 // Service worker
