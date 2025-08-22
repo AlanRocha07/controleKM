@@ -1,20 +1,21 @@
 <!DOCTYPE html>
+
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Controle de Quilometragem</title>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#003366">
-  <link rel="icon" href="icon-192.png" type="image/png">
-  <link rel="apple-touch-icon" href="icon-192.png">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Controle de Quilometragem</title>
+<link href="manifest.json" rel="manifest"/>
+<meta content="#003366" name="theme-color"/>
+<link href="icon-192.png" rel="icon" type="image/png"/>
+<link href="icon-192.png" rel="apple-touch-icon"/>
+
+
+
+
+
+
+<style>
     :root{--bg:#f7f7fb;--card:#fff;--text:#111827;--muted:#6b7280;--primary:#2563eb;--border:#e5e7eb;--grid:rgba(0,0,0,.08)}
     [data-theme="dark"]{--bg:#101216;--card:#171a21;--text:#e5e7eb;--muted:#9ca3af;--primary:#60a5fa;--border:#252a33;--grid:rgba(255,255,255,.12)}
     *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;line-height:1.35}
@@ -48,74 +49,75 @@
 <body>
 <button id="btnSairApp" title="Sair">Sair</button>
 <button id="adminBtn" title="Administração">Admin</button>
-<button id="themeToggle" class="theme-toggle" aria-label="Alternar tema">🌙</button>
-<div id="appRoot" hidden>
-  <div class="container">
-    <h1>Controle de Quilometragem</h1>
-    <div class="card">
-      <h2>Novo Registro</h2>
-      <label>Data e Hora (Brasília):</label>
-      <input type="text" id="dataHora" readonly />
-      <label>Placa do Veículo *</label>
-      <input type="text" id="placa" placeholder="Ex: ABC-1234" />
-      <label>Quilometragem Inicial *</label>
-      <input type="number" id="kmInicial" inputmode="numeric" />
-      <label>Foto Inicial *</label>
-      <input type="file" id="fotoInicial" accept="image/*" />
-      <img id="previewInicial" class="preview" alt="Prévia inicial" />
-      <label>Quilometragem Final *</label>
-      <input type="number" id="kmFinal" inputmode="numeric" />
-      <label>Foto Final *</label>
-      <input type="file" id="fotoFinal" accept="image/*" />
-      <img id="previewFinal" class="preview" alt="Prévia final" />
-      <label>Observação (opcional)</label>
-      <textarea id="observacao" placeholder="Algo a acrescentar?"></textarea>
-      <div class="actions">
-        <button class="btn small" id="btnSalvar">💾 Salvar</button>
-      </div>
-    </div>
-    <div class="card">
-      <h2>Relatórios</h2>
-      <div id="relatorios"></div>
-      <div class="actions" style="margin-top:8px">
-        <button class="btn small" id="btnExportar">📂 Exportar XLSX</button>
-        <button class="btn small ghost" id="btnApagar">🗑️ Apagar Todos</button>
-      </div>
-    </div>
-    <div class="card">
-      <h2>Dashboard</h2>
-      <div class="filters">
-        <select id="periodo">
-          <option value="todos">Todos os registros</option>
-          <option value="semana">Última semana</option>
-          <option value="mes">Último mês</option>
-          <option value="ano">Último ano</option>
-        </select>
-        <select id="filtroPlaca">
-          <option value="todas">Todas as placas</option>
-        </select>
-      </div>
-      <div class="metrics">
-        <div class="metric"><h3>Total Km</h3><p id="totalKm">0</p></div>
-        <div class="metric"><h3>Média Km</h3><p id="mediaKm">0</p></div>
-        <div class="metric"><h3>Registros</h3><p id="numRegistros">0</p></div>
-      </div>
-      <canvas id="grafico"></canvas>
-    </div>
-    <div id="adminSection" class="card" style="display:none;">
-      <h2>Painel de Administração</h2>
-      <div class="actions">
-        <button id="exportUsersXlsx" class="btn small">Exportar Usuários (XLSX)</button>
-      </div>
-      <table>
-        <thead>
-          <tr><th>Nome</th><th>Email</th><th>Status</th><th>Ação</th></tr>
-        </thead>
-        <tbody id="usersTbody"></tbody>
-      </table>
-      <p id="usersEmpty" style="display:none; margin-top:8px; color:var(--muted);">Nenhum usuário encontrado.</p>
-    </div>
-  </div>
+<button aria-label="Alternar tema" class="theme-toggle" id="themeToggle">🌙</button>
+<div hidden="" id="appRoot">
+<div class="container">
+<h1>Controle de Quilometragem</h1>
+<div class="card">
+<h2>Novo Registro</h2>
+<label>Data e Hora (Brasília):</label>
+<input id="dataHora" readonly="" type="text"/>
+<label>Placa do Veículo *</label>
+<input id="placa" placeholder="Ex: ABC-1234" type="text"/>
+<label>Quilometragem Inicial *</label>
+<input id="kmInicial" inputmode="numeric" type="number"/>
+<label>Foto Inicial *</label>
+<input accept="image/*" id="fotoInicial" type="file"/>
+<img alt="Prévia inicial" class="preview" id="previewInicial"/>
+<label>Quilometragem Final *</label>
+<input id="kmFinal" inputmode="numeric" type="number"/>
+<label>Foto Final *</label>
+<input accept="image/*" id="fotoFinal" type="file"/>
+<img alt="Prévia final" class="preview" id="previewFinal"/>
+<label>Observação (opcional)</label>
+<textarea id="observacao" placeholder="Algo a acrescentar?"></textarea>
+<div class="actions">
+<button class="btn small" id="btnSalvar">💾 Salvar</button>
+</div>
+</div>
+<div class="card">
+<h2>Relatórios</h2>
+<div id="relatorios"></div>
+<div class="actions" style="margin-top:8px">
+<button class="btn small" id="btnExportar">📂 Exportar XLSX</button>
+<button class="btn small ghost" id="btnApagar">🗑️ Apagar Todos</button>
+</div>
+</div>
+<div class="card">
+<h2>Dashboard</h2>
+<div class="filters">
+<select id="periodo">
+<option value="todos">Todos os registros</option>
+<option value="semana">Última semana</option>
+<option value="mes">Último mês</option>
+<option value="ano">Último ano</option>
+</select>
+<select id="filtroPlaca">
+<option value="todas">Todas as placas</option>
+</select>
+</div>
+<div class="metrics">
+<div class="metric"><h3>Total Km</h3><p id="totalKm">0</p></div>
+<div class="metric"><h3>Média Km</h3><p id="mediaKm">0</p></div>
+<div class="metric"><h3>Registros</h3><p id="numRegistros">0</p></div>
+</div>
+<canvas id="grafico"></canvas>
+</div>
+<div class="card" id="adminSection" style="display:none;">
+<h2>Painel de Administração</h2>
+<div class="actions">
+<button class="btn small" id="exportUsersXlsx">Exportar Usuários (XLSX)</button>
+</div>
+<table>
+<thead>
+<tr><th>Nome</th><th>Email</th><th>Status</th><th>Ação</th></tr>
+</thead>
+<tbody id="usersTbody"></tbody>
+</table>
+<p id="usersEmpty" style="display:none; margin-top:8px; color:var(--muted);">Nenhum usuário encontrado.</p>
+<p id="usersError" style="display:none; margin-top:8px; color:#b91c1c;">Sem permissão para listar usuários. Verifique as regras.</p>
+</div>
+</div>
 </div>
 <style>
   .auth-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.08);backdrop-filter:saturate(150%) blur(2px);z-index:9999}
@@ -126,50 +128,59 @@
   .auth-primary{background:#0d47a1;color:#fff}.auth-secondary{background:#e9eef7}.auth-row{display:flex;gap:8px}.auth-row .auth-btn{flex:1}
   @media (max-width:420px){.auth-card{margin:8px;padding:16px;border-radius:14px}}
 </style>
-<div id="authScreen" class="auth-overlay" aria-hidden="false">
-  <div class="auth-card">
-    <h3 class="auth-title">Entrar no Controle de KM</h3>
-    <p class="auth-sub">Use seu e-mail e senha. Se ainda não tem, cadastre-se.</p>
-    <input id="authEmail" class="auth-input" type="email" placeholder="Seu e-mail" autocomplete="email" required>
-    <input id="authPass" class="auth-input" type="password" placeholder="Sua senha" autocomplete="current-password" required>
-    <button id="btnEntrar" class="auth-btn auth-primary">Entrar</button>
-    <div class="auth-row">
-      <button id="btnCadastrar" class="auth-btn auth-secondary">Cadastrar</button>
-      <button id="btnEsqueci" class="auth-btn auth-secondary">Esqueci a senha</button>
-    </div>
-    <div id="authMsg" class="auth-sub" style="margin-top:10px;color:#d32f2f;display:none;"></div>
-  </div>
+<div aria-hidden="false" class="auth-overlay" id="authScreen">
+<div class="auth-card">
+<h3 class="auth-title">Entrar no Controle de KM</h3>
+<p class="auth-sub">Use seu e-mail e senha. Se ainda não tem, cadastre-se.</p>
+<input autocomplete="email" class="auth-input" id="authEmail" placeholder="Seu e-mail" required="" type="email"/>
+<input autocomplete="current-password" class="auth-input" id="authPass" placeholder="Sua senha" required="" type="password"/>
+<button class="auth-btn auth-primary" id="btnEntrar">Entrar</button>
+<div class="auth-row">
+<button class="auth-btn auth-secondary" id="btnCadastrar">Cadastrar</button>
+<button class="auth-btn auth-secondary" id="btnEsqueci">Esqueci a senha</button>
 </div>
+<div class="auth-sub" id="authMsg" style="margin-top:10px;color:#d32f2f;display:none;"></div>
+</div>
+</div>
+
 <script>
+// === Firebase init ===
 const firebaseConfig={apiKey:"AIzaSyCNUTWw3BLTg3S2KPqsnCfZC_aw5lqidas",authDomain:"controle-de-km-86510.firebaseapp.com",projectId:"controle-de-km-86510",storageBucket:"controle-de-km-86510.firebasestorage.app",messagingSenderId:"608090510388",appId:"1:608090510388:web:3b31393fb0a80ba243a661",measurementId:"G-HW52GZV66K"};
 firebase.initializeApp(firebaseConfig);
 const auth=firebase.auth();const db=firebase.firestore();
+// === Helpers ===
 function $(s){return document.querySelector(s)}
-const authScreen=$('#authScreen'),appRoot=$('#appRoot'),msgBox=$('#authMsg'),adminBtn=$('#adminBtn'),adminSection=$('#adminSection'),usersTbody=$('#usersTbody'),usersEmpty=$('#usersEmpty');
+const authScreen=$('#authScreen'),appRoot=$('#appRoot'),msgBox=$('#authMsg'),adminBtn=$('#adminBtn'),adminSection=$('#adminSection'),usersTbody=$('#usersTbody'),usersEmpty=$('#usersEmpty'),usersError=$('#usersError');
 function showAuthMessage(t,w=false){if(!msgBox)return;msgBox.style.display='block';msgBox.style.color=w?'#d32f2f':'#2e7d32';msgBox.textContent=t}
 function hideAuthMessage(){if(msgBox){msgBox.style.display='none';msgBox.textContent=''}}
 function getDeviceId(){try{let id=localStorage.getItem('deviceId');if(!id){id=(crypto&&crypto.randomUUID)?crypto.randomUUID():'dev-'+Math.random().toString(36).slice(2);localStorage.setItem('deviceId',id)}return id}catch(e){return'dev-'+Math.random().toString(36).slice(2)}}
 const DEVICE_ID=getDeviceId();let sessionUnsub=null;
-async function bindSingleDeviceSession(user){try{const ref=db.collection('userSessions').doc(user.uid);await ref.set({deviceId:DEVICE_ID,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});if(sessionUnsub)sessionUnsub();sessionUnsub=ref.onSnapshot(s=>{const d=s.data();if(d&&d.deviceId&&d.deviceId!==DEVICE_ID){auth.signOut().catch(()=>{});showAuthMessage('Sua conta foi acessada em outro dispositivo. Você foi desconectado aqui.',true)}})}catch(e){}}
+async function bindSingleDeviceSession(user){try{const ref=db.collection('userSessions').doc(user.uid);await ref.set({deviceId:DEVICE_ID,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});if(sessionUnsub)sessionUnsub();sessionUnsub=ref.onSnapshot(s=>{const d=s.data();if(d&&d.deviceId&&d.deviceId!==DEVICE_ID){auth.signOut().catch(()=>{});showAuthMessage('Sua conta foi acessada em outro dispositivo. Você foi desconectado aqui.',true)}})}catch(e){/* sem permissão -> ignorar */}}
+// Tema
 const themeBtn=document.getElementById("themeToggle");
 function updateThemeIcon(){themeBtn.textContent=document.body.dataset.theme==="dark"?"☀️":"🌙"}
 themeBtn.addEventListener("click",()=>{document.body.dataset.theme=document.body.dataset.theme==="dark"?"light":"dark";updateThemeIcon();atualizarDashboard()});
 document.body.dataset.theme="light";updateThemeIcon();
+// Dados locais
 let registros=JSON.parse(localStorage.getItem("registros")||"[]");let chart;
+// Datas / imagens
 function nowBR(){const opt={timeZone:"America/Sao_Paulo",hour12:false};return new Date().toLocaleString("pt-BR",opt)}
-function parseDataHoraBR(str){const m=(str||"").match(/(\\d{2})\\/(\\d{2})\\/(\\d{4}).*?(\\d{2}):(\\d{2})(?::(\\d{2}))?/);if(!m)return null;const[,dd,MM,yyyy,HH,mm,ss]=m;return new Date(`${yyyy}-${MM}-${dd}T${HH}:${mm}:${ss||"00"}`)}
+function parseDataHoraBR(str){const m=(str||"").match(/(\d{2})\/(\d{2})\/(\d{4}).*?(\d{2}):(\d{2})(?::(\d{2}))?/);if(!m)return null;const[,dd,MM,yyyy,HH,mm,ss]=m;return new Date(`${yyyy}-${MM}-${dd}T${HH}:${mm}:${ss||"00"}`)}
 function compressImage(file,cb){const r=new FileReader();r.onload=e=>{const img=new Image();img.onload=()=>{const c=document.createElement("canvas"),x=c.getContext("2d"),maxW=700,scale=Math.min(maxW/img.width,1);c.width=img.width*scale;c.height=img.height*scale;x.drawImage(img,0,0,c.width,c.height);cb(c.toDataURL("image/jpeg",.75))};img.src=e.target.result};r.readAsDataURL(file)}
 function showOk(t,tx){Swal.fire({icon:"success",title:t,text:tx,timer:1800,showConfirmButton:false})}
 function showErr(tx){Swal.fire({icon:"error",title:"Atenção",text:tx})}
+// Inputs
 const dataHoraInput=document.getElementById("dataHora"),placaInput=document.getElementById("placa"),kmIniInput=document.getElementById("kmInicial"),kmFimInput=document.getElementById("kmFinal"),fotoIniInput=document.getElementById("fotoInicial"),fotoFimInput=document.getElementById("fotoFinal"),obsInput=document.getElementById("observacao"),filtroPeriodo=document.getElementById("periodo"),filtroPlaca=document.getElementById("filtroPlaca"),relatoriosDiv=document.getElementById("relatorios");
 function tick(){dataHoraInput.value=nowBR()}setInterval(tick,1000);tick();
 fotoIniInput.addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;compressImage(f,url=>{document.getElementById("previewInicial").src=url;document.getElementById("previewInicial").dataset.img=url})});
 fotoFimInput.addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;compressImage(f,url=>{document.getElementById("previewFinal").src=url;document.getElementById("previewFinal").dataset.img=url})});
+// Botões principais
 document.getElementById("btnSalvar").addEventListener("click",salvarRegistro);
 document.getElementById("btnExportar").addEventListener("click",exportarXLSX);
 document.getElementById("btnApagar").addEventListener("click",apagarTodos);
 filtroPeriodo.addEventListener("change",atualizarDashboard);
 filtroPlaca.addEventListener("change",atualizarDashboard);
+// Validações e persistência local
 function validar(){const placa=(placaInput.value||"").trim().toUpperCase();const kmI=parseFloat(kmIniInput.value);const kmF=parseFloat(kmFimInput.value);const fotoI=document.getElementById("previewInicial").dataset.img;const fotoF=document.getElementById("previewFinal").dataset.img;if(!placa){showErr("Informe a placa do veículo.");return}if(!Number.isFinite(kmI)){showErr("Informe a quilometragem inicial.");return}if(!Number.isFinite(kmF)){showErr("Informe a quilometragem final.");return}if(kmF<kmI){showErr("A quilometragem final deve ser maior ou igual à inicial.");return}if(!fotoI){showErr("Anexe a foto inicial.");return}if(!fotoF){showErr("Anexe a foto final.");return}return{placa,kmI,kmF,fotoI,fotoF}}
 function salvarRegistro(){const ok=validar();if(!ok)return;const registro={dataHora:dataHoraInput.value,placa:ok.placa,kmInicial:ok.kmI,kmFinal:ok.kmF,fotoInicial:ok.fotoI,fotoFinal:ok.fotoF,observacao:(obsInput.value||"").trim()};registros.push(registro);localStorage.setItem("registros",JSON.stringify(registros));renderizarRelatorios();atualizarDashboard();placaInput.value="";kmIniInput.value="";kmFimInput.value="";fotoIniInput.value="";fotoFimInput.value="";obsInput.value="";document.getElementById("previewInicial").src="";delete document.getElementById("previewInicial").dataset.img;document.getElementById("previewFinal").src="";delete document.getElementById("previewFinal").dataset.img;showOk("Registro salvo","Seu registro foi adicionado com sucesso.")}
 function apagarTodos(){if(registros.length===0){showErr("Não há registros para apagar.");return}Swal.fire({icon:"warning",title:"Apagar todos?",text:"Esta ação não pode ser desfeita.",showCancelButton:true,confirmButtonText:"Apagar",cancelButtonText:"Cancelar"}).then(res=>{if(res.isConfirmed){registros=[];localStorage.removeItem("registros");renderizarRelatorios();atualizarDashboard();showOk("Registros apagados","Todos os registros foram removidos.")}})}
@@ -180,60 +191,90 @@ function atualizarFiltroPlacas(){const sel=document.getElementById("filtroPlaca"
 function getChartColors(){const cs=getComputedStyle(document.body);return{ text:cs.getPropertyValue('--text').trim(), grid:cs.getPropertyValue('--grid').trim() }}
 function atualizarDashboard(){let filtrados=[...registros];const per=filtroPeriodo.value;const agora=new Date();filtrados=filtrados.filter(r=>{const dt=parseDataHoraBR(r.dataHora)||new Date();const dias=(agora-dt)/86400000;if(per==="semana")return dias<=7;if(per==="mes")return dias<=30;if(per==="ano")return dias<=365;return true});const placaSel=filtroPlaca.value;if(placaSel!=="todas")filtrados=filtrados.filter(r=>r.placa===placaSel);const labels=filtrados.map(r=>r.dataHora);const kms=filtrados.map(r=>(+r.kmFinal||0)-(+r.kmInicial||0));const total=kms.reduce((a,b)=>a+(Number.isFinite(b)?b:0),0);const media=kms.length?total/kms.length:0;document.getElementById("totalKm").textContent=Math.round(total);document.getElementById("mediaKm").textContent=media.toFixed(1);document.getElementById("numRegistros").textContent=filtrados.length;const ctx=document.getElementById("grafico").getContext("2d");const{ text,grid }=getChartColors();const maxY=kms.length?Math.max(...kms):0;if(chart)chart.destroy();chart=new Chart(ctx,{type:"line",data:{labels,datasets:[{label:"Km Percorridos",data:kms,borderColor:"rgba(37,99,235,1)",backgroundColor:"rgba(37,99,235,0.18)",fill:true,tension:.3,pointRadius:4,pointHoverRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:text,font:{size:12}}},tooltip:{titleColor:text,bodyColor:text}},scales:{x:{ticks:{color:text,maxRotation:0,autoSkip:true},grid:{color:grid}},y:{beginAtZero:true,suggestedMax:maxY>0?maxY+Math.ceil(maxY*0.15)+5:10,ticks:{color:text},grid:{color:grid}}}})})}
 renderizarRelatorios();atualizarDashboard();
+// === Autenticação (único listener) ===
 function traduzErro(e){const code=e?.code||'';if(code.includes('auth/invalid-email'))return'E-mail inválido.';if(code.includes('auth/user-not-found'))return'Usuário não encontrado.';if(code.includes('auth/wrong-password'))return'Senha incorreta.';if(code.includes('auth/email-already-in-use'))return'Este e-mail já está em uso.';if(code.includes('auth/weak-password'))return'Senha fraca. Tente outra.';return'Erro: '+(e?.message||'tente novamente.')}
 $('#btnEntrar')?.addEventListener('click',async()=>{hideAuthMessage();const email=$('#authEmail').value.trim();const pass=$('#authPass').value;if(!email||!pass)return showAuthMessage('Preencha e-mail e senha.',true);try{const cred=await auth.signInWithEmailAndPassword(email,pass);if(!cred.user.emailVerified){await auth.signOut();return showAuthMessage('Verifique seu e-mail antes de acessar o app.',true)}showAuthMessage('Login realizado!')}catch(e){showAuthMessage(traduzErro(e),true)}});
 $('#btnCadastrar')?.addEventListener('click',async()=>{hideAuthMessage();const email=$('#authEmail').value.trim();const pass=$('#authPass').value;if(!email||!pass)return showAuthMessage('Informe e-mail e crie uma senha.',true);try{const cred=await auth.createUserWithEmailAndPassword(email,pass);await cred.user.sendEmailVerification();await auth.signOut();showAuthMessage('Conta criada! Enviamos um e-mail de verificação. Confirme para entrar.',false)}catch(e){showAuthMessage(traduzErro(e),true)}});
 $('#btnEsqueci')?.addEventListener('click',async()=>{hideAuthMessage();const email=$('#authEmail').value.trim();if(!email)return showAuthMessage('Digite seu e-mail para receber o link.',true);try{await auth.sendPasswordResetEmail(email);showAuthMessage('Enviamos um link de redefinição para seu e-mail.')}catch(e){showAuthMessage(traduzErro(e),true)}});
+// === Mostrar app x login ===
 function showApp(){appRoot.hidden=false;authScreen.style.display='none';$('#btnSairApp').style.display='inline-flex'}
 function showLogin(){appRoot.hidden=true;authScreen.style.display='flex';$('#btnSairApp').style.display='none'}
 auth.onAuthStateChanged(async(user)=>{
   if(!user){showLogin();return}
   await user.reload();
   if(!user.emailVerified){await auth.signOut();showLogin();showAuthMessage('Verifique seu e-mail antes de acessar o app.',true);return}
-  try{const ref=db.collection('users').doc(user.uid);await ref.set({uid:user.uid,email:user.email,name:user.displayName||'',updatedAt:firebase.firestore.FieldValue.serverTimestamp(),createdAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}catch(e){}
+  // Garante doc do usuário
+  try{
+    const ref=db.collection('users').doc(user.uid);
+    await ref.set({uid:user.uid,email:user.email,name:user.displayName||'',updatedAt:firebase.firestore.FieldValue.serverTimestamp(),createdAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+  }catch(e){/* ignore */}
+  // Observa revogação
   const myRef=db.collection('users').doc(user.uid);
   myRef.onSnapshot(doc=>{const data=doc.data()||{};if(data.revoked===true){auth.signOut().catch(()=>{});showAuthMessage('Seu acesso foi revogado pelo administrador.',true)}});
   await bindSingleDeviceSession(user);
   showApp();
-  if(user.email==='alansrocha@gmail.com'){adminBtn.style.display='inline-block';adminSection.style.display='block';ensureUsersListener()} else {adminBtn.style.display='none';adminSection.style.display='none';stopUsersListener()}
+  // Admin?
+  const isAdmin = (user.email||'').toLowerCase()==='alansrocha@gmail.com';
+  if(isAdmin){
+    adminBtn.style.display='inline-block';
+    adminSection.style.display='block';
+    ensureUsersListener();
+  }else{
+    adminBtn.style.display='none';
+    adminSection.style.display='none';
+    stopUsersListener();
+  }
 });
 document.getElementById('btnSairApp').addEventListener('click',()=>{auth.signOut().catch(()=>{})});
 adminBtn.addEventListener('click',()=>{adminSection.scrollIntoView({behavior:'smooth',block:'start'})});
+// === Usuários (admin) ===
 let usersUnsub=null;let usersCache=[];
-function ensureUsersListener(){stopUsersListener();usersUnsub=db.collection('users').onSnapshot(snap=>{usersCache=[];snap.forEach(d=>{usersCache.push({id:d.id,...(d.data()||{})})});renderUsers()},err=>{})}
+function ensureUsersListener(){
+  stopUsersListener();
+  usersError.style.display='none';
+  usersUnsub=db.collection('users').onSnapshot(
+    snap=>{
+      usersCache=[];snap.forEach(d=>{usersCache.push({id:d.id,...(d.data()||{})})});
+      renderUsers();
+    },
+    err=>{
+      usersCache=[];renderUsers();
+      usersError.style.display='block';
+      console.warn('[admin] snapshot error', err);
+    }
+  );
+}
 function stopUsersListener(){if(usersUnsub){usersUnsub();usersUnsub=null}}
-function renderUsers(){usersTbody.innerHTML='';if(usersCache.length===0){usersEmpty.style.display='block';return}usersEmpty.style.display='none';usersCache.sort((a,b)=>(a.email||'').localeCompare(b.email||''));usersCache.forEach(u=>{const tr=document.createElement('tr');const revoked=!!u.revoked;tr.innerHTML=`<td>${u.name||''}</td><td>${u.email||''}</td><td>${revoked?'<span class="badge rev">Revogado</span>':'<span class="badge ok">Ativo</span>'}</td><td><button class="btn small toggle" data-id="${u.id}" data-next="${(!revoked)}">${revoked?'Restaurar':'Revogar'}</button></td>`;usersTbody.appendChild(tr)})}
-document.body.addEventListener('click',e=>{if(e.target&&e.target.classList.contains('toggle')){const id=e.target.getAttribute('data-id');const nextVal=e.target.getAttribute('data-next')==='true';db.collection('users').doc(id).update({revoked:nextVal}).catch(()=>{})}});
-document.getElementById('exportUsersXlsx').addEventListener('click',()=>{const data=usersCache.map(u=>({Nome:u.name||'',Email:u.email||'',Status:u.revoked?'Revogado':'Ativo'}));const ws=XLSX.utils.json_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Usuarios');XLSX.writeFile(wb,'usuarios.xlsx')});
+function renderUsers(){
+  usersTbody.innerHTML='';
+  if(usersCache.length===0){usersEmpty.style.display='block';return}
+  usersEmpty.style.display='none';
+  usersCache.sort((a,b)=>(a.email||'').localeCompare(b.email||''));
+  usersCache.forEach(u=>{
+    const tr=document.createElement('tr');const revoked=!!u.revoked;
+    tr.innerHTML=`<td>${u.name||''}</td><td>${u.email||''}</td><td>${revoked?'<span class="badge rev">Revogado</span>':'<span class="badge ok">Ativo</span>'}</td><td><button class="btn small toggle" data-id="${u.id}" data-next="${(!revoked)}">${revoked?'Restaurar':'Revogar'}</button></td>`;
+    usersTbody.appendChild(tr);
+  });
+document.body.addEventListener('click',e=>{
+  if(e.target&&e.target.classList.contains('toggle')){
+    const id=e.target.getAttribute('data-id');
+    const nextVal=e.target.getAttribute('data-next')==='true';
+    db.collection('users').doc(id).update({revoked:nextVal}).catch((err)=>{
+      console.warn('[admin] update revoked error', err);
+      showErr('Sem permissão para alterar este usuário.');
+    });
+document.getElementById('exportUsersXlsx').addEventListener('click',()=>{
+  const data=usersCache.map(u=>({Nome:u.name||'',Email:u.email||'',Status:u.revoked?'Revogado':'Ativo'}));
+  const ws=XLSX.utils.json_to_sheet(data);
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Usuarios');
+  XLSX.writeFile(wb,'usuarios.xlsx');
+// PWA install CTA
 let deferredPrompt;window.addEventListener('beforeinstallprompt',(e)=>{e.preventDefault();deferredPrompt=e;const b=document.createElement('button');b.textContent='📲 Instale o aplicativo';b.className='btn small';b.style.marginTop='10px';const c=document.querySelector('.container')||document.body;c.prepend(b);b.addEventListener('click',async()=>{b.remove();deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null})});
-if('serviceWorker'in navigator){navigator.serviceWorker.register('service-worker.js').then(reg=>{if(reg.waiting){reg.waiting.postMessage({type:'SKIP_WAITING'})}reg.addEventListener('updatefound',()=>{const nw=reg.installing;nw?.addEventListener('statechange',()=>{if(nw.state==='installed'&&navigator.serviceWorker.controller){}})});navigator.serviceWorker.addEventListener('controllerchange',()=>{})}).catch(()=>{})}
-</script>
-<script>
-document.getElementById('btnEntrar')?.addEventListener('click', async () => {
-    console.log('[LOGIN] Botão Entrar clicado');
-    const email = document.getElementById('authEmail')?.value.trim();
-    const pass = document.getElementById('authPass')?.value;
-
-    if (!email || !pass) {
-        console.warn('[LOGIN] Campos vazios');
-        alert('Preencha e-mail e senha.');
-        return;
-    }
-
-    try {
-        console.log('[LOGIN] Tentando autenticar...', email);
-        const cred = await firebase.auth().signInWithEmailAndPassword(email, pass);
-        console.log('[LOGIN] Sucesso!', cred.user.email);
-        if (!cred.user.emailVerified) {
-            await firebase.auth().signOut();
-            alert('Verifique seu e-mail antes de acessar o app.');
-            return;
-        }
-        alert('Login realizado com sucesso!');
-    } catch (e) {
-        console.error('[LOGIN] Erro:', e);
-        alert('Erro no login: ' + (e.message || e));
-    }
-});
-</script></body>
+// Service worker
+if('serviceWorker'in navigator){
+  navigator.serviceWorker.register('service-worker.js').then(reg=>{
+    if(reg.waiting){reg.waiting.postMessage({type:'SKIP_WAITING'})}
+    reg.addEventListener('updatefound',()=>{const nw=reg.installing;nw?.addEventListener('statechange',()=>{if(nw.state==='installed'&&navigator.serviceWorker.controller){}})});
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{})
+  }).catch(()=>{})</script></body>
 </html>
