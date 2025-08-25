@@ -1,12 +1,4 @@
-self.addEventListener('install', e => {
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', e => {
-  clients.claim();
-});
-
-const CACHE_NAME = 'controlekm-v12-20250825195756';
+const CACHE_NAME = 'controle-km-v12';
 const toCache = [
   '/',
   '/index.html',
@@ -15,28 +7,37 @@ const toCache = [
   '/icon-512.png'
 ];
 
+// Instalação
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       return cache.addAll(toCache);
+    }).then(() => {
+      self.skipWaiting();
     })
   );
 });
 
-self.addEventListener('fetch', e => {
-  e.respondWith(
-    caches.match(e.request).then(response => response || fetch(e.request))
-  );
-});
-
+// Ativação
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.map(key => {
-        if (key !== CACHE_NAME) {
-          return caches.delete(key);
-        }
-      }))
-    )
+      Promise.all(
+        keys.map(key => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
+      )
+    ).then(() => self.clients.claim())
+  );
+});
+
+// Busca
+self.addEventListener('fetch', e => {
+  e.respondWith(
+    caches.match(e.request).then(response => {
+      return response || fetch(e.request);
+    })
   );
 });

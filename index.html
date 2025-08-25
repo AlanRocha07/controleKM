@@ -1,19 +1,28 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1" name="viewport"/>
-<title>Controle de Quilometragem</title>
-<link href="manifest.json" rel="manifest"/>
-<meta content="#003366" name="theme-color"/>
-<link href="icon-192.png" rel="icon" type="image/png"/>
-<link href="icon-192.png" rel="apple-touch-icon"/>
-<!-- Estilos omitidos para brevidade -->
-</head>
+<head><meta charset="utf-8"/><title>Controle de Quilometragem</title></head>
 <body>
-<!-- Conteúdo do body omitido para brevidade -->
+<!-- Conteúdo do app aqui -->
+
 <script>
-// ... Código JavaScript omitido até o final do service worker ...
+// PWA install CTA
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt',(e)=>{
+  e.preventDefault();
+  deferredPrompt = e;
+  const b=document.createElement('button');
+  b.textContent='📲 Instale o aplicativo';
+  b.className='btn small';
+  b.style.marginTop='10px';
+  const c=document.querySelector('.container')||document.body;
+  c.prepend(b);
+  b.addEventListener('click',async()=>{
+    b.remove();
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt=null;
+  });
+});
 
 // Service worker
 if('serviceWorker' in navigator){
