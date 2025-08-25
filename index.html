@@ -17,7 +17,7 @@
 
 // Service worker
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('service-worker-v11.js').then(reg=>{
+  navigator.serviceWorker.register('service-worker-v12.js').then(reg=>{
     if(reg.waiting){
         reg.waiting.postMessage({type:'SKIP_WAITING'});
     }
