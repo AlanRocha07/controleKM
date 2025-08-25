@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controle de Quilometragem</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#007bff">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg-color: #f4f4f9;
+      --text-color: #333;
+      --card-bg: #fff;
+      --primary-color: #007bff;
+      --success-color: #28a745;
+      --danger-color: #dc3545;
+      --warning-color: #ffc107;
+    }
+    [data-theme="dark"] {
+      --bg-color: #1e1e1e;
+      --text-color: #f4f4f9;
+      --card-bg: #2c2c2c;
+      --primary-color: #0d6efd;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 20px;
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+    }
+    .card {
+      background: var(--card-bg);
+      padding: 15px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    input, button, select {
+      padding: 10px;
+      margin: 5px 0;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    button {
+      background: var(--primary-color);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    /* Botões menores */
+    .btn-small {
+      padding: 6px 12px;
+      width: auto;
+      display: inline-block;
+      margin: 2px;
+      font-size: 12px;
+    }
+    .btn-danger {
+      background: var(--danger-color);
+    }
+    .btn-success {
+      background: var(--success-color);
+    }
+    .btn-warning {
+      background: var(--warning-color);
+      color: #000;
+    }
+    img {
+      max-width: 100px;
+      margin-top: 5px;
+      display: block;
+    }
+    .relatorio {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-bg);
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+    canvas {
+      max-width: 100%;
+      height: 250px !important;
+    }
+    /* Cartões de métricas */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .metric-card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .metric-value {
+      font-size: 2em;
+      font-weight: bold;
+      color: var(--primary-color);
+    }
+    .metric-label {
+      font-size: 0.9em;
+      color: var(--text-color);
+      opacity: 0.7;
+    }
+    /* Filtros */
+    .filters {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .filters select, .filters input {
+      flex: 1;
+      min-width: 150px;
+    }
+    /* Botão de tema fixo */
+    .theme-toggle {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 999;
+      background: var(--card-bg);
+      border: none;
+      border-radius: 50%;
+      padding: 10px;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      transition: background 0.3s;
+    }
+    .theme-toggle:hover {
+      background: var(--primary-color);
+      color: white;
+    }
+    /* Responsividade */
+    @media (max-width: 768px) {
+      .filters {
+        flex-direction: column;
+      }
+      .metrics-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <button id="themeToggle" class="theme-toggle">🌙</button>
+  <div class="container">
+    <h1>Controle de Quilometragem</h1>
+
+    <div class="card">
+      <h2>Novo Registro</h2>
+      <label>Data e Hora (Brasília):</label>
+      <input type="text" id="dataHora" readonly>
+      
+      <label>Quilometragem Inicial:</label>
+      <input type="number" id="kmInicial">
+      <input type="file" id="fotoInicial" accept="image/*">
+      <img id="previewInicial">
+
+      <label>Quilometragem Final:</label>
+      <input type="number" id="kmFinal">
+      <input type="file" id="fotoFinal" accept="image/*">
+      <img id="previewFinal">
+
+      <button onclick="salvarRegistro()" class="btn-success">💾 Salvar</button>
+    </div>
+
+    <!-- Cartões de Métricas -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-value" id="totalKm">0</div>
+        <div class="metric-label">Km Total</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="mediaKm">0</div>
+        <div class="metric-label">Km Médio</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="totalViagens">0</div>
+        <div class="metric-label">Total de Viagens</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="maiorViagem">0</div>
+        <div class="metric-label">Maior Viagem (Km)</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Relatórios</h2>
+      <div class="filters">
+        <select id="filtroPeríodo">
+          <option value="todos">Todos os períodos</option>
+          <option value="hoje">Hoje</option>
+          <option value="semana">Esta semana</option>
+          <option value="mes">Este mês</option>
+          <option value="personalizado">Período personalizado</option>
+        </select>
+        <input type="date" id="dataInicio" style="display:none;">
+        <input type="date" id="dataFim" style="display:none;">
+        <button onclick="aplicarFiltro()" class="btn-small">🔍 Filtrar</button>
+      </div>
+      <div id="relatorios"></div>
+      <div style="text-align: center; margin-top: 15px;">
+        <button onclick="exportarXLSX()" class="btn-small btn-warning">📂 Exportar</button>
+        <button onclick="apagarTodos()" class="btn-small btn-danger">🗑️ Apagar Todos</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Dashboard</h2>
+      <canvas id="grafico"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const dataHoraInput = document.getElementById("dataHora");
+    const relatoriosDiv = document.getElementById("relatorios");
+    let registros = JSON.parse(localStorage.getItem("registros")) || [];
+    let registrosFiltrados = [...registros];
+
+    // Atualizar data/hora automática
+    function atualizarDataHora() {
+      const opcoes = { timeZone: "America/Sao_Paulo", hour12: false };
+      dataHoraInput.value = new Date().toLocaleString("pt-BR", opcoes);
+    }
+    setInterval(atualizarDataHora, 1000);
+
+    // Compressão de imagens
+    function compressImage(file, callback) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          const maxWidth = 600;
+          const scale = Math.min(maxWidth / img.width, 1);
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          callback(canvas.toDataURL("image/jpeg", 0.7));
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Previews
+    document.getElementById("fotoInicial").addEventListener("change", e => {
+      if (e.target.files[0]) {
+        compressImage(e.target.files[0], (dataUrl) => {
+          document.getElementById("previewInicial").src = dataUrl;
+          document.getElementById("previewInicial").dataset.img = dataUrl;
+        });
+      }
+    });
+    document.getElementById("fotoFinal").addEventListener("change", e => {
+      if (e.target.files[0]) {
+        compressImage(e.target.files[0], (dataUrl) => {
+          document.getElementById("previewFinal").src = dataUrl;
+          document.getElementById("previewFinal").dataset.img = dataUrl;
+        });
+      }
+    });
+
+    // Salvar registro
+    function salvarRegistro() {
+      const kmInicial = parseFloat(document.getElementById("kmInicial").value) || 0;
+      const kmFinal = parseFloat(document.getElementById("kmFinal").value) || 0;
+      
+      if (kmFinal <= kmInicial) {
+        alert("A quilometragem final deve ser maior que a inicial!");
+        return;
+      }
+
+      const registro = {
+        dataHora: dataHoraInput.value,
+        kmInicial: kmInicial,
+        fotoInicial: document.getElementById("previewInicial").dataset.img || "",
+        kmFinal: kmFinal,
+        fotoFinal: document.getElementById("previewFinal").dataset.img || "",
+        kmPercorridos: kmFinal - kmInicial
+      };
+      
+      registros.push(registro);
+      localStorage.setItem("registros", JSON.stringify(registros));
+      
+      // Limpar formulário
+      document.getElementById("kmInicial").value = "";
+      document.getElementById("kmFinal").value = "";
+      document.getElementById("previewInicial").src = "";
+      document.getElementById("previewFinal").src = "";
+      document.getElementById("previewInicial").dataset.img = "";
+      document.getElementById("previewFinal").dataset.img = "";
+      
+      atualizarMetricas();
+      aplicarFiltro();
+      atualizarDashboard();
+    }
+
+    // Atualizar métricas
+    function atualizarMetricas() {
+      const totalKm = registros.reduce((sum, r) => sum + r.kmPercorridos, 0);
+      const mediaKm = registros.length > 0 ? totalKm / registros.length : 0;
+      const totalViagens = registros.length;
+      const maiorViagem = registros.length > 0 ? Math.max(...registros.map(r => r.kmPercorridos)) : 0;
+
+      document.getElementById("totalKm").textContent = totalKm.toFixed(1);
+      document.getElementById("mediaKm").textContent = mediaKm.toFixed(1);
+      document.getElementById("totalViagens").textContent = totalViagens;
+      document.getElementById("maiorViagem").textContent = maiorViagem.toFixed(1);
+    }
+
+    // Filtros de período
+    document.getElementById("filtroPeríodo").addEventListener("change", function() {
+      const valor = this.value;
+      const dataInicio = document.getElementById("dataInicio");
+      const dataFim = document.getElementById("dataFim");
+      
+      if (valor === "personalizado") {
+        dataInicio.style.display = "block";
+        dataFim.style.display = "block";
+      } else {
+        dataInicio.style.display = "none";
+        dataFim.style.display = "none";
+      }
+    });
+
+    function aplicarFiltro() {
+      const filtro = document.getElementById("filtroPeríodo").value;
+      const hoje = new Date();
+      
+      switch(filtro) {
+        case "hoje":
+          const hojeFmt = hoje.toLocaleDateString("pt-BR");
+          registrosFiltrados = registros.filter(r => r.dataHora.includes(hojeFmt));
+          break;
+        case "semana":
+          const inicioSemana = new Date(hoje);
+          inicioSemana.setDate(hoje.getDate() - hoje.getDay());
+          registrosFiltrados = registros.filter(r => {
+            const dataRegistro = new Date(r.dataHora.split(" ")[0].split("/").reverse().join("-"));
+            return dataRegistro >= inicioSemana;
+          });
+          break;
+        case "mes":
+          const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+          registrosFiltrados = registros.filter(r => {
+            const dataRegistro = new Date(r.dataHora.split(" ")[0].split("/").reverse().join("-"));
+            return dataRegistro >= inicioMes;
+          });
+          break;
+        case "personalizado":
+          const dataInicio = document.getElementById("dataInicio").value;
+          const dataFim = document.getElementById("dataFim").value;
+          if (dataInicio && dataFim) {
+            registrosFiltrados = registros.filter(r => {
+              const dataRegistro = r.dataHora.split(" ")[0].split("/").reverse().join("-");
+              return dataRegistro >= dataInicio && dataRegistro <= dataFim;
+            });
+          } else {
+            registrosFiltrados = [...registros];
+          }
+          break;
+        default:
+          registrosFiltrados = [...registros];
+      }
+      
+      renderizarRelatorios();
+      atualizarDashboard();
+    }
+
+    // Renderizar relatórios
+    function renderizarRelatorios() {
+      relatoriosDiv.innerHTML = "";
+      registrosFiltrados.forEach((r, i) => {
+        const indexOriginal = registros.indexOf(r);
+        const div = document.createElement("div");
+        div.className = "relatorio";
+        div.innerHTML = `
+          <div>
+            <b>${r.dataHora}</b><br>
+            Km Inicial: ${r.kmInicial} | Km Final: ${r.kmFinal} | Percorridos: <strong>${r.kmPercorridos.toFixed(1)} km</strong><br>
+            <img src="${r.fotoInicial}" alt="Inicial" style="max-width: 80px;">
+            <img src="${r.fotoFinal}" alt="Final" style="max-width: 80px;">
+          </div>
+          <button onclick="apagarRegistro(${indexOriginal})" class="btn-small btn-danger">🗑️</button>
+        `;
+        relatoriosDiv.appendChild(div);
+      });
+    }
+
+    function apagarRegistro(i) {
+      if (confirm("Tem certeza que deseja apagar este registro?")) {
+        registros.splice(i, 1);
+        localStorage.setItem("registros", JSON.stringify(registros));
+        atualizarMetricas();
+        aplicarFiltro();
+        atualizarDashboard();
+      }
+    }
+
+    function apagarTodos() {
+      if (confirm("Tem certeza que deseja apagar TODOS os registros? Esta ação não pode ser desfeita!")) {
+        registros = [];
+        localStorage.removeItem("registros");
+        atualizarMetricas();
+        aplicarFiltro();
+        atualizarDashboard();
+      }
+    }
+
+    // Exportar XLSX
+    function exportarXLSX() {
+      const dadosExport = registrosFiltrados.map(r => ({
+        "Data/Hora": r.dataHora,
+        "Km Inicial": r.kmInicial,
+        "Km Final": r.kmFinal,
+        "Km Percorridos": r.kmPercorridos
+      }));
+      
+      const ws = XLSX.utils.json_to_sheet(dadosExport);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Relatórios");
+      XLSX.writeFile(wb, "relatorios_quilometragem.xlsx");
+    }
+
+    // Dashboard
+    let chart;
+    function atualizarDashboard() {
+      const ctx = document.getElementById("grafico").getContext("2d");
+      const labels = registrosFiltrados.map(r => r.dataHora.split(" ")[0]);
+      const kms = registrosFiltrados.map(r => r.kmPercorridos);
+
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: "Km Percorridos",
+            data: kms,
+            backgroundColor: "rgba(0,123,255,0.7)",
+            borderColor: "rgba(0,123,255,1)",
+            borderWidth: 1
+          }]
+        },
+        options: { 
+          responsive: true, 
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Quilômetros'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Alternância de tema
+    const themeToggle = document.getElementById("themeToggle");
+    themeToggle.addEventListener("click", () => {
+      document.body.dataset.theme =
+        document.body.dataset.theme === "dark" ? "light" : "dark";
+      themeToggle.textContent = document.body.dataset.theme === "dark" ? "☀️" : "🌙";
+      localStorage.setItem("theme", document.body.dataset.theme);
+    });
+
+    // Carregar tema salvo
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) {
+      document.body.dataset.theme = savedTheme;
+      themeToggle.textContent = savedTheme === "dark" ? "☀️" : "🌙";
+    }
+
+    // Registrar Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js')
+          .then((registration) => {
+            console.log('SW registrado com sucesso: ', registration);
+          })
+          .catch((registrationError) => {
+            console.log('SW falhou ao registrar: ', registrationError);
+          });
+      });
+    }
+
+    // Inicializar
+    atualizarMetricas();
+    aplicarFiltro();
+    atualizarDashboard();
+    atualizarDataHora();
+  </script>
+</body>
+</html>
+
+
