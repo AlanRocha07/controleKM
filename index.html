@@ -137,20 +137,37 @@
     /* Botão de tema fixo */
     .theme-toggle {
       position: fixed;
-      top: 10px;
-      right: 10px;
+      top: 20px;
+      right: 20px;
       z-index: 999;
-      background: var(--card-bg);
-      border: none;
-      border-radius: 50%;
-      padding: 10px;
+      background: transparent;
+      border: 2px solid var(--primary-color);
+      border-radius: 8px;
+      padding: 8px 12px;
       cursor: pointer;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-      transition: background 0.3s;
+      color: var(--primary-color);
+      font-size: 16px;
+      transition: all 0.3s;
     }
     .theme-toggle:hover {
       background: var(--primary-color);
       color: white;
+    }
+    /* Campos obrigatórios */
+    .required {
+      border-color: var(--danger-color) !important;
+    }
+    .required-label::after {
+      content: " *";
+      color: var(--danger-color);
+    }
+    /* Fotos no relatório */
+    .foto-relatorio {
+      max-width: 60px;
+      max-height: 100px;
+      object-fit: cover;
+      border-radius: 4px;
+      margin: 2px;
     }
     /* Responsividade */
     @media (max-width: 768px) {
@@ -170,17 +187,23 @@
 
     <div class="card">
       <h2>Novo Registro</h2>
+      
+      <label class="required-label">Placa do Veículo</label>
+      <input type="text" id="placaVeiculo" placeholder="Ex: ABC-1234" maxlength="8" required>
+      
       <label>Data e Hora (Brasília):</label>
       <input type="text" id="dataHora" readonly>
       
-      <label>Quilometragem Inicial:</label>
-      <input type="number" id="kmInicial">
-      <input type="file" id="fotoInicial" accept="image/*">
+      <label class="required-label">Quilometragem Inicial</label>
+      <input type="number" id="kmInicial" required>
+      <label class="required-label">Foto Inicial</label>
+      <input type="file" id="fotoInicial" accept="image/*" required>
       <img id="previewInicial">
 
-      <label>Quilometragem Final:</label>
-      <input type="number" id="kmFinal">
-      <input type="file" id="fotoFinal" accept="image/*">
+      <label class="required-label">Quilometragem Final</label>
+      <input type="number" id="kmFinal" required>
+      <label class="required-label">Foto Final</label>
+      <input type="file" id="fotoFinal" accept="image/*" required>
       <img id="previewFinal">
 
       <button onclick="salvarRegistro()" class="btn-success">💾 Salvar</button>
@@ -216,6 +239,9 @@
           <option value="mes">Este mês</option>
           <option value="personalizado">Período personalizado</option>
         </select>
+        <select id="filtroPlaca">
+          <option value="todas">Todas as placas</option>
+        </select>
         <input type="date" id="dataInicio" style="display:none;">
         <input type="date" id="dataFim" style="display:none;">
         <button onclick="aplicarFiltro()" class="btn-small">🔍 Filtrar</button>
@@ -246,7 +272,7 @@
     }
     setInterval(atualizarDataHora, 1000);
 
-    // Compressão de imagens
+    // Compressão de imagens otimizada para 9x16 e mais leve
     function compressImage(file, callback) {
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -254,16 +280,107 @@
         img.onload = () => {
           const canvas = document.createElement("canvas");
           const ctx = canvas.getContext("2d");
-          const maxWidth = 600;
-          const scale = Math.min(maxWidth / img.width, 1);
-          canvas.width = img.width * scale;
-          canvas.height = img.height * scale;
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          callback(canvas.toDataURL("image/jpeg", 0.7));
+          
+          // Definir dimensões para formato 9x16 (mais leve)
+          const maxWidth = 270; // 9 partes
+          const maxHeight = 480; // 16 partes
+          
+          let { width, height } = img;
+          
+          // Calcular escala mantendo proporção 9x16
+          const targetRatio = 9/16;
+          const currentRatio = width/height;
+          
+          if (currentRatio > targetRatio) {
+            // Imagem muito larga, ajustar pela altura
+            height = maxHeight;
+            width = height * targetRatio;
+          } else {
+            // Imagem muito alta, ajustar pela largura
+            width = maxWidth;
+            height = width / targetRatio;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          // Desenhar imagem redimensionada
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Comprimir com qualidade menor para arquivo mais leve
+          callback(canvas.toDataURL("image/jpeg", 0.5));
         };
         img.src = event.target.result;
       };
       reader.readAsDataURL(file);
+    }
+
+    // Validar campos obrigatórios
+    function validarCampos() {
+      const placa = document.getElementById("placaVeiculo").value.trim();
+      const kmInicial = document.getElementById("kmInicial").value;
+      const kmFinal = document.getElementById("kmFinal").value;
+      const fotoInicial = document.getElementById("fotoInicial").files[0];
+      const fotoFinal = document.getElementById("fotoFinal").files[0];
+
+      // Remover classes de erro anteriores
+      document.querySelectorAll('.required').forEach(el => el.classList.remove('required'));
+
+      let erros = [];
+
+      if (!placa) {
+        document.getElementById("placaVeiculo").classList.add('required');
+        erros.push("Placa do veículo é obrigatória");
+      }
+
+      if (!kmInicial) {
+        document.getElementById("kmInicial").classList.add('required');
+        erros.push("Quilometragem inicial é obrigatória");
+      }
+
+      if (!kmFinal) {
+        document.getElementById("kmFinal").classList.add('required');
+        erros.push("Quilometragem final é obrigatória");
+      }
+
+      if (!fotoInicial) {
+        document.getElementById("fotoInicial").classList.add('required');
+        erros.push("Foto inicial é obrigatória");
+      }
+
+      if (!fotoFinal) {
+        document.getElementById("fotoFinal").classList.add('required');
+        erros.push("Foto final é obrigatória");
+      }
+
+      if (kmInicial && kmFinal && parseFloat(kmFinal) <= parseFloat(kmInicial)) {
+        document.getElementById("kmFinal").classList.add('required');
+        erros.push("A quilometragem final deve ser maior que a inicial");
+      }
+
+      if (erros.length > 0) {
+        alert("Por favor, corrija os seguintes erros:\n\n" + erros.join("\n"));
+        return false;
+      }
+
+      return true;
+    }
+
+    // Atualizar lista de placas no filtro
+    function atualizarFiltroPlacas() {
+      const filtroPlaca = document.getElementById("filtroPlaca");
+      const placasUnicas = [...new Set(registros.map(r => r.placa))].sort();
+      
+      // Limpar opções existentes (exceto "Todas as placas")
+      filtroPlaca.innerHTML = '<option value="todas">Todas as placas</option>';
+      
+      // Adicionar placas únicas
+      placasUnicas.forEach(placa => {
+        const option = document.createElement("option");
+        option.value = placa;
+        option.textContent = placa;
+        filtroPlaca.appendChild(option);
+      });
     }
 
     // Previews
@@ -272,6 +389,7 @@
         compressImage(e.target.files[0], (dataUrl) => {
           document.getElementById("previewInicial").src = dataUrl;
           document.getElementById("previewInicial").dataset.img = dataUrl;
+          e.target.classList.remove('required');
         });
       }
     });
@@ -280,21 +398,42 @@
         compressImage(e.target.files[0], (dataUrl) => {
           document.getElementById("previewFinal").src = dataUrl;
           document.getElementById("previewFinal").dataset.img = dataUrl;
+          e.target.classList.remove('required');
         });
       }
     });
 
+    // Remover classe de erro ao digitar
+    document.getElementById("placaVeiculo").addEventListener("input", e => {
+      e.target.classList.remove('required');
+      // Formatar placa automaticamente
+      let valor = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (valor.length > 3) {
+        valor = valor.substring(0, 3) + '-' + valor.substring(3, 7);
+      }
+      e.target.value = valor;
+    });
+
+    document.getElementById("kmInicial").addEventListener("input", e => {
+      e.target.classList.remove('required');
+    });
+
+    document.getElementById("kmFinal").addEventListener("input", e => {
+      e.target.classList.remove('required');
+    });
+
     // Salvar registro
     function salvarRegistro() {
-      const kmInicial = parseFloat(document.getElementById("kmInicial").value) || 0;
-      const kmFinal = parseFloat(document.getElementById("kmFinal").value) || 0;
-      
-      if (kmFinal <= kmInicial) {
-        alert("A quilometragem final deve ser maior que a inicial!");
+      if (!validarCampos()) {
         return;
       }
 
+      const placa = document.getElementById("placaVeiculo").value.trim();
+      const kmInicial = parseFloat(document.getElementById("kmInicial").value);
+      const kmFinal = parseFloat(document.getElementById("kmFinal").value);
+
       const registro = {
+        placa: placa,
         dataHora: dataHoraInput.value,
         kmInicial: kmInicial,
         fotoInicial: document.getElementById("previewInicial").dataset.img || "",
@@ -307,16 +446,22 @@
       localStorage.setItem("registros", JSON.stringify(registros));
       
       // Limpar formulário
+      document.getElementById("placaVeiculo").value = "";
       document.getElementById("kmInicial").value = "";
       document.getElementById("kmFinal").value = "";
+      document.getElementById("fotoInicial").value = "";
+      document.getElementById("fotoFinal").value = "";
       document.getElementById("previewInicial").src = "";
       document.getElementById("previewFinal").src = "";
       document.getElementById("previewInicial").dataset.img = "";
       document.getElementById("previewFinal").dataset.img = "";
       
       atualizarMetricas();
+      atualizarFiltroPlacas();
       aplicarFiltro();
       atualizarDashboard();
+      
+      alert("Registro salvo com sucesso!");
     }
 
     // Atualizar métricas
@@ -349,24 +494,28 @@
 
     function aplicarFiltro() {
       const filtro = document.getElementById("filtroPeríodo").value;
+      const placaFiltro = document.getElementById("filtroPlaca").value;
       const hoje = new Date();
+      
+      // Primeiro filtrar por período
+      let registrosFiltradosPorPeriodo = [...registros];
       
       switch(filtro) {
         case "hoje":
           const hojeFmt = hoje.toLocaleDateString("pt-BR");
-          registrosFiltrados = registros.filter(r => r.dataHora.includes(hojeFmt));
+          registrosFiltradosPorPeriodo = registros.filter(r => r.dataHora.includes(hojeFmt));
           break;
         case "semana":
           const inicioSemana = new Date(hoje);
           inicioSemana.setDate(hoje.getDate() - hoje.getDay());
-          registrosFiltrados = registros.filter(r => {
+          registrosFiltradosPorPeriodo = registros.filter(r => {
             const dataRegistro = new Date(r.dataHora.split(" ")[0].split("/").reverse().join("-"));
             return dataRegistro >= inicioSemana;
           });
           break;
         case "mes":
           const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-          registrosFiltrados = registros.filter(r => {
+          registrosFiltradosPorPeriodo = registros.filter(r => {
             const dataRegistro = new Date(r.dataHora.split(" ")[0].split("/").reverse().join("-"));
             return dataRegistro >= inicioMes;
           });
@@ -375,16 +524,19 @@
           const dataInicio = document.getElementById("dataInicio").value;
           const dataFim = document.getElementById("dataFim").value;
           if (dataInicio && dataFim) {
-            registrosFiltrados = registros.filter(r => {
+            registrosFiltradosPorPeriodo = registros.filter(r => {
               const dataRegistro = r.dataHora.split(" ")[0].split("/").reverse().join("-");
               return dataRegistro >= dataInicio && dataRegistro <= dataFim;
             });
-          } else {
-            registrosFiltrados = [...registros];
           }
           break;
-        default:
-          registrosFiltrados = [...registros];
+      }
+      
+      // Depois filtrar por placa
+      if (placaFiltro !== "todas") {
+        registrosFiltrados = registrosFiltradosPorPeriodo.filter(r => r.placa === placaFiltro);
+      } else {
+        registrosFiltrados = registrosFiltradosPorPeriodo;
       }
       
       renderizarRelatorios();
@@ -400,10 +552,10 @@
         div.className = "relatorio";
         div.innerHTML = `
           <div>
-            <b>${r.dataHora}</b><br>
+            <b>${r.placa} - ${r.dataHora}</b><br>
             Km Inicial: ${r.kmInicial} | Km Final: ${r.kmFinal} | Percorridos: <strong>${r.kmPercorridos.toFixed(1)} km</strong><br>
-            <img src="${r.fotoInicial}" alt="Inicial" style="max-width: 80px;">
-            <img src="${r.fotoFinal}" alt="Final" style="max-width: 80px;">
+            <img src="${r.fotoInicial}" alt="Inicial" class="foto-relatorio">
+            <img src="${r.fotoFinal}" alt="Final" class="foto-relatorio">
           </div>
           <button onclick="apagarRegistro(${indexOriginal})" class="btn-small btn-danger">🗑️</button>
         `;
@@ -416,6 +568,7 @@
         registros.splice(i, 1);
         localStorage.setItem("registros", JSON.stringify(registros));
         atualizarMetricas();
+        atualizarFiltroPlacas();
         aplicarFiltro();
         atualizarDashboard();
       }
@@ -426,6 +579,7 @@
         registros = [];
         localStorage.removeItem("registros");
         atualizarMetricas();
+        atualizarFiltroPlacas();
         aplicarFiltro();
         atualizarDashboard();
       }
@@ -434,6 +588,7 @@
     // Exportar XLSX
     function exportarXLSX() {
       const dadosExport = registrosFiltrados.map(r => ({
+        "Placa": r.placa,
         "Data/Hora": r.dataHora,
         "Km Inicial": r.kmInicial,
         "Km Final": r.kmFinal,
@@ -446,7 +601,7 @@
       XLSX.writeFile(wb, "relatorios_quilometragem.xlsx");
     }
 
-    // Dashboard
+    // Dashboard com gráfico de linhas
     let chart;
     function atualizarDashboard() {
       const ctx = document.getElementById("grafico").getContext("2d");
@@ -455,15 +610,21 @@
 
       if (chart) chart.destroy();
       chart = new Chart(ctx, {
-        type: "bar",
+        type: "line", // Mudado de "bar" para "line"
         data: {
           labels,
           datasets: [{
             label: "Km Percorridos",
             data: kms,
-            backgroundColor: "rgba(0,123,255,0.7)",
+            backgroundColor: "rgba(0,123,255,0.2)",
             borderColor: "rgba(0,123,255,1)",
-            borderWidth: 1
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4, // Suavizar as linhas
+            pointBackgroundColor: "rgba(0,123,255,1)",
+            pointBorderColor: "#fff",
+            pointBorderWidth: 2,
+            pointRadius: 5
           }]
         },
         options: { 
@@ -476,6 +637,18 @@
                 display: true,
                 text: 'Quilômetros'
               }
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'Data'
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top'
             }
           }
         }
@@ -513,6 +686,7 @@
 
     // Inicializar
     atualizarMetricas();
+    atualizarFiltroPlacas();
     aplicarFiltro();
     atualizarDashboard();
     atualizarDataHora();
