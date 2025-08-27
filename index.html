@@ -138,11 +138,10 @@
     .theme-toggle {
       position: fixed;
       top: 20px;
-      right: 20px;
+      right: 0px; /* Ajuste para o canto direito */
       z-index: 999;
       background: transparent;
-      border: 2px solid var(--primary-color);
-      border-radius: 8px;
+      border: none; /* Removendo a borda */
       padding: 8px 12px;
       cursor: pointer;
       color: var(--primary-color);
@@ -152,6 +151,15 @@
     .theme-toggle:hover {
       background: var(--primary-color);
       color: white;
+    }
+    /* Ajuste para campos de input e select */
+    input, button, select {
+      padding: 10px;
+      margin: 5px 0;
+      width: calc(100% - 22px); /* Ajuste para evitar extrapolação */
+      box-sizing: border-box; /* Inclui padding e border no width */
+      border: 1px solid #ccc;
+      border-radius: 8px;
     }
     /* Campos obrigatórios */
     .required {
@@ -466,10 +474,10 @@
 
     // Atualizar métricas
     function atualizarMetricas() {
-      const totalKm = registros.reduce((sum, r) => sum + r.kmPercorridos, 0);
-      const mediaKm = registros.length > 0 ? totalKm / registros.length : 0;
-      const totalViagens = registros.length;
-      const maiorViagem = registros.length > 0 ? Math.max(...registros.map(r => r.kmPercorridos)) : 0;
+      const totalKm = registrosFiltrados.reduce((sum, r) => sum + r.kmPercorridos, 0);
+      const mediaKm = registrosFiltrados.length > 0 ? totalKm / registrosFiltrados.length : 0;
+      const totalViagens = registrosFiltrados.length;
+      const maiorViagem = registrosFiltrados.length > 0 ? Math.max(...registrosFiltrados.map(r => r.kmPercorridos)) : 0;
 
       document.getElementById("totalKm").textContent = totalKm.toFixed(1);
       document.getElementById("mediaKm").textContent = mediaKm.toFixed(1);
