@@ -53,6 +53,7 @@
       width: 100%;
       border: 1px solid #ccc;
       border-radius: 8px;
+      box-sizing: border-box;
     }
     button {
       background: var(--primary-color);
@@ -134,33 +135,28 @@
       flex: 1;
       min-width: 150px;
     }
+
     /* Botão de tema fixo */
     .theme-toggle {
       position: fixed;
-      top: 20px;
-      right: 0px; /* Ajuste para o canto direito */
+      top: 15px;
+      right: 15px;
       z-index: 999;
       background: transparent;
-      border: none; /* Removendo a borda */
+      border: none;
       padding: 8px 12px;
       cursor: pointer;
       color: var(--primary-color);
       font-size: 16px;
       transition: all 0.3s;
+      width: auto !important;
     }
     .theme-toggle:hover {
       background: var(--primary-color);
       color: white;
+      border-radius: 4px;
     }
-    /* Ajuste para campos de input e select */
-    input, button, select {
-      padding: 10px;
-      margin: 5px 0;
-      width: calc(100% - 22px); /* Ajuste para evitar extrapolação */
-      box-sizing: border-box; /* Inclui padding e border no width */
-      border: 1px solid #ccc;
-      border-radius: 8px;
-    }
+
     /* Campos obrigatórios */
     .required {
       border-color: var(--danger-color) !important;
@@ -186,7 +182,6 @@
         grid-template-columns: 1fr 1fr;
       }
     }
-  </style>
 </head>
 <body>
   <button id="themeToggle" class="theme-toggle">🌙</button>
@@ -464,7 +459,7 @@
       document.getElementById("previewInicial").dataset.img = "";
       document.getElementById("previewFinal").dataset.img = "";
       
-      atualizarMetricas();
+      atualizarMetricas(registros); // Passando todos os registros após salvar
       atualizarFiltroPlacas();
       aplicarFiltro();
       atualizarDashboard();
@@ -473,11 +468,11 @@
     }
 
     // Atualizar métricas
-    function atualizarMetricas() {
-      const totalKm = registrosFiltrados.reduce((sum, r) => sum + r.kmPercorridos, 0);
-      const mediaKm = registrosFiltrados.length > 0 ? totalKm / registrosFiltrados.length : 0;
-      const totalViagens = registrosFiltrados.length;
-      const maiorViagem = registrosFiltrados.length > 0 ? Math.max(...registrosFiltrados.map(r => r.kmPercorridos)) : 0;
+    function atualizarMetricas(dados) {
+      const totalKm = dados.reduce((sum, r) => sum + r.kmPercorridos, 0);
+      const mediaKm = dados.length > 0 ? totalKm / dados.length : 0;
+      const totalViagens = dados.length;
+      const maiorViagem = dados.length > 0 ? Math.max(...dados.map(r => r.kmPercorridos)) : 0;
 
       document.getElementById("totalKm").textContent = totalKm.toFixed(1);
       document.getElementById("mediaKm").textContent = mediaKm.toFixed(1);
@@ -549,6 +544,7 @@
       
       renderizarRelatorios();
       atualizarDashboard();
+      atualizarMetricas(registrosFiltrados); // Passando os dados filtrados para as métricas
     }
 
     // Renderizar relatórios
@@ -575,7 +571,7 @@
       if (confirm("Tem certeza que deseja apagar este registro?")) {
         registros.splice(i, 1);
         localStorage.setItem("registros", JSON.stringify(registros));
-        atualizarMetricas();
+        atualizarMetricas(registros);
         atualizarFiltroPlacas();
         aplicarFiltro();
         atualizarDashboard();
@@ -586,7 +582,7 @@
       if (confirm("Tem certeza que deseja apagar TODOS os registros? Esta ação não pode ser desfeita!")) {
         registros = [];
         localStorage.removeItem("registros");
-        atualizarMetricas();
+        atualizarMetricas(registros);
         atualizarFiltroPlacas();
         aplicarFiltro();
         atualizarDashboard();
@@ -693,7 +689,7 @@
     }
 
     // Inicializar
-    atualizarMetricas();
+    atualizarMetricas(registros);
     atualizarFiltroPlacas();
     aplicarFiltro();
     atualizarDashboard();
