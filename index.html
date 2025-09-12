@@ -136,25 +136,26 @@
       min-width: 150px;
     }
 
-    /* Botão de tema fixo */
+    /* Botão de tema fixo - CORRIGIDO */
     .theme-toggle {
       position: fixed;
-      top: 15px;
-      right: 15px;
+      top: 20px;
+      right: 20px;
       z-index: 999;
       background: transparent;
       border: none;
-      padding: 8px 12px;
+      padding: 8px;
       cursor: pointer;
       color: var(--primary-color);
-      font-size: 16px;
+      font-size: 20px;
       transition: all 0.3s;
       width: auto !important;
+      min-width: auto !important;
+      border-radius: 50%;
     }
     .theme-toggle:hover {
       background: var(--primary-color);
       color: white;
-      border-radius: 4px;
     }
 
     /* Campos obrigatórios */
@@ -182,6 +183,7 @@
         grid-template-columns: 1fr 1fr;
       }
     }
+  </style>
 </head>
 <body>
   <button id="themeToggle" class="theme-toggle">🌙</button>
@@ -544,7 +546,7 @@
       
       renderizarRelatorios();
       atualizarDashboard();
-      atualizarMetricas(registrosFiltrados); // Passando os dados filtrados para as métricas
+      atualizarMetricas(registrosFiltrados); // CORRIGIDO: Passando os dados filtrados para as métricas
     }
 
     // Renderizar relatórios
@@ -697,5 +699,4 @@
   </script>
 </body>
 </html>
-
 
