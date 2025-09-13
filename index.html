@@ -10,6 +10,34 @@
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+    import { getFirestore, doc, setDoc, getDoc, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCNUTWw3BLTg3S2KPqsnCfZC_aw5lqidas",
+      authDomain: "controle-de-km-86510.firebaseapp.com",
+      projectId: "controle-de-km-86510",
+      storageBucket: "controle-de-km-86510.firebasestorage.app",
+      messagingSenderId: "608090510388",
+      appId: "1:608090510388:web:3b31393fb0a80ba243a661",
+      measurementId: "G-HW52GZV66K"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Disponibilizar globalmente
+    window.firebaseAuth = auth;
+    window.firebaseDb = db;
+    window.firebaseAuthMethods = { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged };
+    window.firebaseDbMethods = { doc, setDoc, getDoc, collection, getDocs };
+  </script>
+
   <style>
     :root {
       --bg-color: #f4f4f9;
@@ -82,6 +110,10 @@
       background: var(--warning-color);
       color: #000;
     }
+    .btn-admin {
+      background: var(--warning-color);
+      color: #000;
+    }
     img {
       max-width: 100px;
       margin-top: 5px;
@@ -136,7 +168,7 @@
       min-width: 150px;
     }
 
-    /* Botão de tema fixo - CORRIGIDO */
+    /* Botão de tema fixo */
     .theme-toggle {
       position: fixed;
       top: 20px;
@@ -174,6 +206,64 @@
       border-radius: 4px;
       margin: 2px;
     }
+
+    /* Estilos de autenticação */
+    .auth-container {
+      max-width: 400px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    .auth-tabs {
+      display: flex;
+      margin-bottom: 20px;
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      background: var(--card-bg);
+    }
+    .auth-tab.active {
+      background: var(--primary-color);
+      color: white;
+    }
+    .auth-form {
+      display: none;
+    }
+    .auth-form.active {
+      display: block;
+    }
+    .user-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 10px;
+      background: var(--card-bg);
+      border-radius: 8px;
+    }
+
+    /* Tabela de administração */
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    .admin-table th, .admin-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    .admin-table th {
+      background: var(--primary-color);
+      color: white;
+    }
+    .admin-table tr:nth-child(even) {
+      background: rgba(0,0,0,0.05);
+    }
+
     /* Responsividade */
     @media (max-width: 768px) {
       .filters {
@@ -182,12 +272,62 @@
       .metrics-grid {
         grid-template-columns: 1fr 1fr;
       }
+      .auth-container {
+        margin: 20px auto;
+        padding: 15px;
+      }
+    }
+
+    /* Ocultar conteúdo principal quando não logado */
+    .hidden {
+      display: none !important;
     }
   </style>
 </head>
 <body>
   <button id="themeToggle" class="theme-toggle">🌙</button>
-  <div class="container">
+
+  <!-- Tela de Autenticação -->
+  <div id="authScreen" class="auth-container">
+    <div class="card">
+      <h1>Controle de Quilometragem</h1>
+      <div class="auth-tabs">
+        <div class="auth-tab active" onclick="switchAuthTab('login')">Login</div>
+        <div class="auth-tab" onclick="switchAuthTab('register')">Cadastro</div>
+      </div>
+
+      <!-- Formulário de Login -->
+      <div id="loginForm" class="auth-form active">
+        <input type="email" id="loginEmail" placeholder="Email" required>
+        <input type="password" id="loginPassword" placeholder="Senha" required>
+        <button onclick="login()" class="btn-success">Entrar</button>
+      </div>
+
+      <!-- Formulário de Cadastro -->
+      <div id="registerForm" class="auth-form">
+        <input type="email" id="registerEmail" placeholder="Email" required>
+        <input type="password" id="registerPassword" placeholder="Senha (mín. 6 caracteres)" required>
+        <input type="text" id="registerName" placeholder="Nome completo" required>
+        <button onclick="register()" class="btn-success">Cadastrar</button>
+      </div>
+
+      <div id="authMessage" style="margin-top: 15px; text-align: center;"></div>
+    </div>
+  </div>
+
+  <!-- Conteúdo Principal (oculto até login) -->
+  <div id="mainContent" class="container hidden">
+    <!-- Informações do usuário logado -->
+    <div class="user-info">
+      <div>
+        <strong>Usuário:</strong> <span id="userEmail"></span>
+        <div id="adminButton" class="hidden" style="margin-top: 5px;">
+          <button onclick="toggleAdminPanel()" class="btn-small btn-admin">👑 Administrador</button>
+        </div>
+      </div>
+      <button onclick="logout()" class="btn-small btn-danger">Sair</button>
+    </div>
+
     <h1>Controle de Quilometragem</h1>
 
     <div class="card">
@@ -262,20 +402,238 @@
       <h2>Dashboard</h2>
       <canvas id="grafico"></canvas>
     </div>
+
+    <!-- Painel Administrativo -->
+    <div id="adminPanel" class="card hidden">
+      <h2>Painel Administrativo</h2>
+      <div style="text-align: center; margin-bottom: 15px;">
+        <button onclick="loadUsers()" class="btn-small btn-success">🔄 Atualizar Lista</button>
+        <button onclick="exportUsersToExcel()" class="btn-small btn-warning">📂 Exportar Usuários</button>
+      </div>
+      <div id="usersTableContainer">
+        <table class="admin-table" id="usersTable">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Nome</th>
+              <th>Função</th>
+              <th>Data de Cadastro</th>
+            </tr>
+          </thead>
+          <tbody id="usersTableBody">
+            <tr>
+              <td colspan="4" style="text-align: center;">Clique em "Atualizar Lista" para carregar os usuários</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <script>
+    let currentUser = null;
+    let isAdmin = false;
+
+    // Variáveis do app principal
     const dataHoraInput = document.getElementById("dataHora");
     const relatoriosDiv = document.getElementById("relatorios");
     let registros = JSON.parse(localStorage.getItem("registros")) || [];
     let registrosFiltrados = [...registros];
 
-    // Atualizar data/hora automática
-    function atualizarDataHora() {
-      const opcoes = { timeZone: "America/Sao_Paulo", hour12: false };
-      dataHoraInput.value = new Date().toLocaleString("pt-BR", opcoes);
+    // Aguardar carregamento do Firebase
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        initializeAuth();
+      }, 1000);
+    });
+
+    function initializeAuth() {
+      if (window.firebaseAuth && window.firebaseAuthMethods) {
+        window.firebaseAuthMethods.onAuthStateChanged(window.firebaseAuth, (user) => {
+          if (user) {
+            currentUser = user;
+            isAdmin = user.email === 'alansrocha@gmail.com';
+            showMainContent();
+          } else {
+            currentUser = null;
+            isAdmin = false;
+            showAuthScreen();
+          }
+        });
+      }
     }
-    setInterval(atualizarDataHora, 1000);
+
+    function showAuthScreen() {
+      document.getElementById('authScreen').classList.remove('hidden');
+      document.getElementById('mainContent').classList.add('hidden');
+    }
+
+    function showMainContent() {
+      document.getElementById('authScreen').classList.add('hidden');
+      document.getElementById('mainContent').classList.remove('hidden');
+      
+      // Atualizar informações do usuário
+      document.getElementById('userEmail').textContent = currentUser.email;
+      
+      // Mostrar botão admin se for administrador
+      if (isAdmin) {
+        document.getElementById('adminButton').classList.remove('hidden');
+      } else {
+        document.getElementById('adminButton').classList.add('hidden');
+      }
+
+      // Inicializar app principal
+      initializeMainApp();
+    }
+
+    function switchAuthTab(tab) {
+      document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+      
+      if (tab === 'login') {
+        document.querySelector('.auth-tab:first-child').classList.add('active');
+        document.getElementById('loginForm').classList.add('active');
+      } else {
+        document.querySelector('.auth-tab:last-child').classList.add('active');
+        document.getElementById('registerForm').classList.add('active');
+      }
+      
+      document.getElementById('authMessage').textContent = '';
+    }
+
+    async function login() {
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      const messageDiv = document.getElementById('authMessage');
+
+      if (!email || !password) {
+        messageDiv.textContent = 'Por favor, preencha todos os campos.';
+        messageDiv.style.color = 'red';
+        return;
+      }
+
+      try {
+        await window.firebaseAuthMethods.signInWithEmailAndPassword(window.firebaseAuth, email, password);
+        messageDiv.textContent = 'Login realizado com sucesso!';
+        messageDiv.style.color = 'green';
+      } catch (error) {
+        messageDiv.textContent = 'Erro no login: ' + error.message;
+        messageDiv.style.color = 'red';
+      }
+    }
+
+    async function register() {
+      const email = document.getElementById('registerEmail').value;
+      const password = document.getElementById('registerPassword').value;
+      const name = document.getElementById('registerName').value;
+      const messageDiv = document.getElementById('authMessage');
+
+      if (!email || !password || !name) {
+        messageDiv.textContent = 'Por favor, preencha todos os campos.';
+        messageDiv.style.color = 'red';
+        return;
+      }
+
+      if (password.length < 6) {
+        messageDiv.textContent = 'A senha deve ter pelo menos 6 caracteres.';
+        messageDiv.style.color = 'red';
+        return;
+      }
+
+      try {
+        const userCredential = await window.firebaseAuthMethods.createUserWithEmailAndPassword(window.firebaseAuth, email, password);
+        const user = userCredential.user;
+
+        // Salvar dados do usuário no Firestore
+        await window.firebaseDbMethods.setDoc(window.firebaseDbMethods.doc(window.firebaseDb, 'users', user.uid), {
+          email: email,
+          name: name,
+          role: email === 'alansrocha@gmail.com' ? 'admin' : 'user',
+          createdAt: new Date(),
+          revoked: false
+        });
+
+        messageDiv.textContent = 'Cadastro realizado com sucesso!';
+        messageDiv.style.color = 'green';
+      } catch (error) {
+        messageDiv.textContent = 'Erro no cadastro: ' + error.message;
+        messageDiv.style.color = 'red';
+      }
+    }
+
+    async function logout() {
+      try {
+        await window.firebaseAuthMethods.signOut(window.firebaseAuth);
+      } catch (error) {
+        console.error('Erro ao fazer logout:', error);
+      }
+    }
+
+    function toggleAdminPanel() {
+      const panel = document.getElementById('adminPanel');
+      panel.classList.toggle('hidden');
+    }
+
+    async function loadUsers() {
+      if (!isAdmin) return;
+
+      try {
+        const usersCollection = window.firebaseDbMethods.collection(window.firebaseDb, 'users');
+        const snapshot = await window.firebaseDbMethods.getDocs(usersCollection);
+        
+        const tbody = document.getElementById('usersTableBody');
+        tbody.innerHTML = '';
+
+        if (snapshot.empty) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Nenhum usuário encontrado</td></tr>';
+          return;
+        }
+
+        snapshot.forEach((doc) => {
+          const userData = doc.data();
+          const row = tbody.insertRow();
+          
+          row.insertCell(0).textContent = userData.email || '';
+          row.insertCell(1).textContent = userData.name || '';
+          row.insertCell(2).textContent = userData.role || 'user';
+          row.insertCell(3).textContent = userData.createdAt ? new Date(userData.createdAt.toDate()).toLocaleDateString('pt-BR') : '';
+        });
+      } catch (error) {
+        console.error('Erro ao carregar usuários:', error);
+        alert('Erro ao carregar usuários: ' + error.message);
+      }
+    }
+
+    function exportUsersToExcel() {
+      const table = document.getElementById('usersTable');
+      const rows = Array.from(table.rows);
+      
+      const data = rows.map(row => {
+        const cells = Array.from(row.cells);
+        return cells.map(cell => cell.textContent);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Usuários");
+      XLSX.writeFile(wb, "usuarios_cadastrados.xlsx");
+    }
+
+    function initializeMainApp() {
+      // Atualizar data/hora automática
+      function atualizarDataHora() {
+        const opcoes = { timeZone: "America/Sao_Paulo", hour12: false };
+        dataHoraInput.value = new Date().toLocaleString("pt-BR", opcoes);
+      }
+      setInterval(atualizarDataHora, 1000);
+
+      // Inicializar
+      atualizarMetricas(registros);
+      atualizarFiltroPlacas();
+      aplicarFiltro();
+      atualizarDashboard();
+      atualizarDataHora();
+    }
 
     // Compressão de imagens otimizada para 9x16 e mais leve
     function compressImage(file, callback) {
@@ -444,7 +802,8 @@
         fotoInicial: document.getElementById("previewInicial").dataset.img || "",
         kmFinal: kmFinal,
         fotoFinal: document.getElementById("previewFinal").dataset.img || "",
-        kmPercorridos: kmFinal - kmInicial
+        kmPercorridos: kmFinal - kmInicial,
+        usuario: currentUser.email
       };
       
       registros.push(registro);
@@ -461,7 +820,7 @@
       document.getElementById("previewInicial").dataset.img = "";
       document.getElementById("previewFinal").dataset.img = "";
       
-      atualizarMetricas(registros); // Passando todos os registros após salvar
+      atualizarMetricas(registros);
       atualizarFiltroPlacas();
       aplicarFiltro();
       atualizarDashboard();
@@ -546,7 +905,7 @@
       
       renderizarRelatorios();
       atualizarDashboard();
-      atualizarMetricas(registrosFiltrados); // CORRIGIDO: Passando os dados filtrados para as métricas
+      atualizarMetricas(registrosFiltrados);
     }
 
     // Renderizar relatórios
@@ -560,6 +919,7 @@
           <div>
             <b>${r.placa} - ${r.dataHora}</b><br>
             Km Inicial: ${r.kmInicial} | Km Final: ${r.kmFinal} | Percorridos: <strong>${r.kmPercorridos.toFixed(1)} km</strong><br>
+            <small>Usuário: ${r.usuario || 'N/A'}</small><br>
             <img src="${r.fotoInicial}" alt="Inicial" class="foto-relatorio">
             <img src="${r.fotoFinal}" alt="Final" class="foto-relatorio">
           </div>
@@ -598,7 +958,8 @@
         "Data/Hora": r.dataHora,
         "Km Inicial": r.kmInicial,
         "Km Final": r.kmFinal,
-        "Km Percorridos": r.kmPercorridos
+        "Km Percorridos": r.kmPercorridos,
+        "Usuário": r.usuario || 'N/A'
       }));
       
       const ws = XLSX.utils.json_to_sheet(dadosExport);
@@ -616,7 +977,7 @@
 
       if (chart) chart.destroy();
       chart = new Chart(ctx, {
-        type: "line", // Mudado de "bar" para "line"
+        type: "line",
         data: {
           labels,
           datasets: [{
@@ -626,7 +987,7 @@
             borderColor: "rgba(0,123,255,1)",
             borderWidth: 2,
             fill: true,
-            tension: 0.4, // Suavizar as linhas
+            tension: 0.4,
             pointBackgroundColor: "rgba(0,123,255,1)",
             pointBorderColor: "#fff",
             pointBorderWidth: 2,
@@ -689,13 +1050,6 @@
           });
       });
     }
-
-    // Inicializar
-    atualizarMetricas(registros);
-    atualizarFiltroPlacas();
-    aplicarFiltro();
-    atualizarDashboard();
-    atualizarDataHora();
   </script>
 </body>
 </html>
