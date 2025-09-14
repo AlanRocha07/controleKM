@@ -15,7 +15,7 @@
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-    import { getFirestore, doc, setDoc, getDoc, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    import { getFirestore, doc, setDoc, getDoc, collection, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
     const firebaseConfig = {
       apiKey: "AIzaSyCNUTWw3BLTg3S2KPqsnCfZC_aw5lqidas",
@@ -35,7 +35,7 @@
     window.firebaseAuth = auth;
     window.firebaseDb = db;
     window.firebaseAuthMethods = { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged };
-    window.firebaseDbMethods = { doc, setDoc, getDoc, collection, getDocs };
+    window.firebaseDbMethods = { doc, setDoc, getDoc, collection, getDocs, serverTimestamp };
   </script>
 
   <style>
@@ -541,22 +541,67 @@
       }
 
       try {
+        console.log('Iniciando cadastro para:', email);
+        messageDiv.textContent = 'Criando conta...';
+        messageDiv.style.color = 'blue';
+
+        // Criar usuário no Firebase Auth
         const userCredential = await window.firebaseAuthMethods.createUserWithEmailAndPassword(window.firebaseAuth, email, password);
         const user = userCredential.user;
+        
+        console.log('Usuário criado no Auth:', user.uid);
+        messageDiv.textContent = 'Salvando dados do usuário...';
 
-        // Salvar dados do usuário no Firestore
-        await window.firebaseDbMethods.setDoc(window.firebaseDbMethods.doc(window.firebaseDb, 'users', user.uid), {
+        // Preparar dados do usuário
+        const userData = {
           email: email,
           name: name,
           role: email === 'alansrocha@gmail.com' ? 'admin' : 'user',
-          createdAt: new Date(),
+          createdAt: window.firebaseDbMethods.serverTimestamp(),
           revoked: false
-        });
+        };
 
+        console.log('Dados a serem salvos:', userData);
+
+        // Salvar dados do usuário no Firestore
+        const userDocRef = window.firebaseDbMethods.doc(window.firebaseDb, 'users', user.uid);
+        await window.firebaseDbMethods.setDoc(userDocRef, userData);
+        
+        console.log('Dados salvos no Firestore com sucesso');
+        
         messageDiv.textContent = 'Cadastro realizado com sucesso!';
         messageDiv.style.color = 'green';
+
+        // Limpar formulário
+        document.getElementById('registerEmail').value = '';
+        document.getElementById('registerPassword').value = '';
+        document.getElementById('registerName').value = '';
+
       } catch (error) {
-        messageDiv.textContent = 'Erro no cadastro: ' + error.message;
+        console.error('Erro detalhado no cadastro:', error);
+        console.error('Código do erro:', error.code);
+        console.error('Mensagem do erro:', error.message);
+        
+        let errorMessage = 'Erro no cadastro: ';
+        
+        switch(error.code) {
+          case 'auth/email-already-in-use':
+            errorMessage += 'Este email já está em uso.';
+            break;
+          case 'auth/invalid-email':
+            errorMessage += 'Email inválido.';
+            break;
+          case 'auth/weak-password':
+            errorMessage += 'Senha muito fraca.';
+            break;
+          case 'permission-denied':
+            errorMessage += 'Permissão negada para salvar dados.';
+            break;
+          default:
+            errorMessage += error.message;
+        }
+        
+        messageDiv.textContent = errorMessage;
         messageDiv.style.color = 'red';
       }
     }
@@ -575,31 +620,60 @@
     }
 
     async function loadUsers() {
-      if (!isAdmin) return;
+      if (!isAdmin) {
+        alert('Acesso negado. Apenas administradores podem ver esta lista.');
+        return;
+      }
 
       try {
+        console.log('Carregando usuários...');
         const usersCollection = window.firebaseDbMethods.collection(window.firebaseDb, 'users');
         const snapshot = await window.firebaseDbMethods.getDocs(usersCollection);
+        
+        console.log('Snapshot obtido:', snapshot);
+        console.log('Número de documentos:', snapshot.size);
         
         const tbody = document.getElementById('usersTableBody');
         tbody.innerHTML = '';
 
         if (snapshot.empty) {
           tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Nenhum usuário encontrado</td></tr>';
+          console.log('Nenhum usuário encontrado no Firestore');
           return;
         }
 
+        let userCount = 0;
         snapshot.forEach((doc) => {
+          userCount++;
           const userData = doc.data();
+          console.log(`Usuário ${userCount}:`, userData);
+          
           const row = tbody.insertRow();
           
           row.insertCell(0).textContent = userData.email || '';
           row.insertCell(1).textContent = userData.name || '';
           row.insertCell(2).textContent = userData.role || 'user';
-          row.insertCell(3).textContent = userData.createdAt ? new Date(userData.createdAt.toDate()).toLocaleDateString('pt-BR') : '';
+          
+          // Tratar data de criação
+          let dateText = '';
+          if (userData.createdAt) {
+            try {
+              if (userData.createdAt.toDate) {
+                dateText = userData.createdAt.toDate().toLocaleDateString('pt-BR');
+              } else {
+                dateText = new Date(userData.createdAt).toLocaleDateString('pt-BR');
+              }
+            } catch (e) {
+              dateText = 'Data inválida';
+            }
+          }
+          row.insertCell(3).textContent = dateText;
         });
+        
+        console.log(`Total de usuários carregados: ${userCount}`);
+        
       } catch (error) {
-        console.error('Erro ao carregar usuários:', error);
+        console.error('Erro detalhado ao carregar usuários:', error);
         alert('Erro ao carregar usuários: ' + error.message);
       }
     }
