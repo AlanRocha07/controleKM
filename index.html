@@ -449,10 +449,32 @@
 
     function initializeAuth() {
       if (window.firebaseAuth && window.firebaseAuthMethods) {
-        window.firebaseAuthMethods.onAuthStateChanged(window.firebaseAuth, (user) => {
+        window.firebaseAuthMethods.onAuthStateChanged(window.firebaseAuth, async (user) => { // Adicionado async aqui
           if (user) {
             currentUser = user;
             isAdmin = user.email === 'alansrocha@gmail.com';
+            
+            // Tentar buscar o documento do usuário no Firestore para garantir que existe
+            const userDocRef = window.firebaseDbMethods.doc(window.firebaseDb, 'users', user.uid);
+            const userDocSnap = await window.firebaseDbMethods.getDoc(userDocRef);
+
+            if (!userDocSnap.exists()) {
+              console.warn('Documento do usuário não encontrado no Firestore para UID:', user.uid, 'Criando agora...');
+              // Se o documento não existe, cria-o (pode acontecer se o cadastro falhou na primeira vez)
+              try {
+                await window.firebaseDbMethods.setDoc(userDocRef, {
+                  email: user.email,
+                  name: user.displayName || 'Usuário Novo',
+                  role: user.email === 'alansrocha@gmail.com' ? 'admin' : 'user',
+                  createdAt: window.firebaseDbMethods.serverTimestamp(),
+                  revoked: false
+                });
+                console.log('Documento do usuário criado no Firestore durante onAuthStateChanged.');
+              } catch (error) {
+                console.error('Erro ao criar documento do usuário no Firestore durante onAuthStateChanged:', error);
+              }
+            }
+
             showMainContent();
           } else {
             currentUser = null;
@@ -550,7 +572,7 @@
         const user = userCredential.user;
         
         console.log('Usuário criado no Auth:', user.uid);
-        messageDiv.textContent = 'Salvando dados do usuário...';
+        messageDiv.textContent = 'Salvando dados do usuário no Firestore...';
 
         // Preparar dados do usuário
         const userData = {
@@ -561,13 +583,13 @@
           revoked: false
         };
 
-        console.log('Dados a serem salvos:', userData);
+        console.log('Dados a serem salvos no Firestore:', userData);
 
         // Salvar dados do usuário no Firestore
         const userDocRef = window.firebaseDbMethods.doc(window.firebaseDb, 'users', user.uid);
         await window.firebaseDbMethods.setDoc(userDocRef, userData);
         
-        console.log('Dados salvos no Firestore com sucesso');
+        console.log('Documento do usuário salvo no Firestore com sucesso para UID:', user.uid);
         
         messageDiv.textContent = 'Cadastro realizado com sucesso!';
         messageDiv.style.color = 'green';
@@ -593,9 +615,6 @@
             break;
           case 'auth/weak-password':
             errorMessage += 'Senha muito fraca.';
-            break;
-          case 'permission-denied':
-            errorMessage += 'Permissão negada para salvar dados.';
             break;
           default:
             errorMessage += error.message;
@@ -821,7 +840,7 @@
     }
 
     // Previews
-    document.getElementById("fotoInicial").addEventListener("change", e => {
+    document.getElementById("fotoInicial").addEventListener('change', e => {
       if (e.target.files[0]) {
         compressImage(e.target.files[0], (dataUrl) => {
           document.getElementById("previewInicial").src = dataUrl;
@@ -830,7 +849,7 @@
         });
       }
     });
-    document.getElementById("fotoFinal").addEventListener("change", e => {
+    document.getElementById("fotoFinal").addEventListener('change', e => {
       if (e.target.files[0]) {
         compressImage(e.target.files[0], (dataUrl) => {
           document.getElementById("previewFinal").src = dataUrl;
@@ -841,7 +860,7 @@
     });
 
     // Remover classe de erro ao digitar
-    document.getElementById("placaVeiculo").addEventListener("input", e => {
+    document.getElementById("placaVeiculo").addEventListener('input', e => {
       e.target.classList.remove('required');
       // Formatar placa automaticamente
       let valor = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -851,11 +870,11 @@
       e.target.value = valor;
     });
 
-    document.getElementById("kmInicial").addEventListener("input", e => {
+    document.getElementById("kmInicial").addEventListener('input', e => {
       e.target.classList.remove('required');
     });
 
-    document.getElementById("kmFinal").addEventListener("input", e => {
+    document.getElementById("kmFinal").addEventListener('input', e => {
       e.target.classList.remove('required');
     });
 
@@ -916,7 +935,7 @@
     }
 
     // Filtros de período
-    document.getElementById("filtroPeríodo").addEventListener("change", function() {
+    document.getElementById("filtroPeríodo").addEventListener('change', function() {
       const valor = this.value;
       const dataInicio = document.getElementById("dataInicio");
       const dataFim = document.getElementById("dataFim");
@@ -1098,7 +1117,7 @@
 
     // Alternância de tema
     const themeToggle = document.getElementById("themeToggle");
-    themeToggle.addEventListener("click", () => {
+    themeToggle.addEventListener('click', () => {
       document.body.dataset.theme =
         document.body.dataset.theme === "dark" ? "light" : "dark";
       themeToggle.textContent = document.body.dataset.theme === "dark" ? "☀️" : "🌙";
