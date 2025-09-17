@@ -15,7 +15,7 @@
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-    import { getFirestore, doc, setDoc, getDoc, collection, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where, orderBy, deleteDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
     const firebaseConfig = {
       apiKey: "AIzaSyCNUTWw3BLTg3S2KPqsnCfZC_aw5lqidas",
@@ -35,7 +35,7 @@
     window.firebaseAuth = auth;
     window.firebaseDb = db;
     window.firebaseAuthMethods = { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged };
-    window.firebaseDbMethods = { doc, setDoc, getDoc, collection, getDocs, serverTimestamp };
+    window.firebaseDbMethods = { doc, setDoc, getDoc, collection, getDocs, query, where, orderBy, deleteDoc, serverTimestamp };
   </script>
 
   <style>
@@ -433,12 +433,13 @@
   <script>
     let currentUser = null;
     let isAdmin = false;
+    let allMileageRecords = []; // Armazena todos os registros do Firestore
 
     // Variáveis do app principal
     const dataHoraInput = document.getElementById("dataHora");
     const relatoriosDiv = document.getElementById("relatorios");
-    let registros = JSON.parse(localStorage.getItem("registros")) || [];
-    let registrosFiltrados = [...registros];
+    let registros = []; // Agora será preenchido pelo Firestore
+    let registrosFiltrados = [];
 
     // Aguardar carregamento do Firebase
     window.addEventListener('load', () => {
@@ -449,7 +450,7 @@
 
     function initializeAuth() {
       if (window.firebaseAuth && window.firebaseAuthMethods) {
-        window.firebaseAuthMethods.onAuthStateChanged(window.firebaseAuth, async (user) => { // Adicionado async aqui
+        window.firebaseAuthMethods.onAuthStateChanged(window.firebaseAuth, async (user) => {
           if (user) {
             currentUser = user;
             isAdmin = user.email === 'alansrocha@gmail.com';
@@ -539,6 +540,7 @@
         messageDiv.textContent = 'Login realizado com sucesso!';
         messageDiv.style.color = 'green';
       } catch (error) {
+        console.error('Erro detalhado no login:', error);
         messageDiv.textContent = 'Erro no login: ' + error.message;
         messageDiv.style.color = 'red';
       }
@@ -712,6 +714,117 @@
       XLSX.writeFile(wb, "usuarios_cadastrados.xlsx");
     }
 
+    async function loadMileageRecords() {
+      if (!currentUser) return; // Não carrega se não houver usuário logado
+
+      try {
+        let q;
+        if (isAdmin) {
+          // Admin vê todos os registros
+          q = window.firebaseDbMethods.query(
+            window.firebaseDbMethods.collection(window.firebaseDb, 'mileageRecords'),
+            window.firebaseDbMethods.orderBy('timestamp', 'desc')
+          );
+        } else {
+          // Usuário comum vê apenas seus próprios registros
+          q = window.firebaseDbMethods.query(
+            window.firebaseDbMethods.collection(window.firebaseDb, 'mileageRecords'),
+            window.firebaseDbMethods.where('userId', '==', currentUser.uid),
+            window.firebaseDbMethods.orderBy('timestamp', 'desc')
+          );
+        }
+
+        const querySnapshot = await window.firebaseDbMethods.getDocs(q);
+        allMileageRecords = []; // Limpa os registros anteriores
+        querySnapshot.forEach((doc) => {
+          allMileageRecords.push({ id: doc.id, ...doc.data() });
+        });
+        registros = [...allMileageRecords]; // Atualiza a variável global de registros
+        console.log('Registros de quilometragem carregados do Firestore:', registros);
+        
+        // Se houver dados no localStorage, migrar para o Firestore e limpar localStorage
+        const localRegistros = JSON.parse(localStorage.getItem("registros")) || [];
+        if (localRegistros.length > 0) {
+          console.log('Migrando registros do localStorage para Firestore...');
+          for (const rec of localRegistros) {
+            // Verifica se o registro já existe no Firestore para evitar duplicatas
+            const exists = allMileageRecords.some(fr => 
+              fr.placa === rec.placa && 
+              fr.dataHora === rec.dataHora && 
+              fr.kmInicial === rec.kmInicial
+            );
+            if (!exists) {
+              await window.firebaseDbMethods.setDoc(window.firebaseDbMethods.doc(window.firebaseDb, 'mileageRecords', window.firebaseDbMethods.doc(window.firebaseDb, 'mileageRecords').id), {
+                ...rec,
+                userId: currentUser.uid,
+                userEmail: currentUser.email, // Adicionado para migração
+                timestamp: window.firebaseDbMethods.serverTimestamp()
+              });
+            }
+          }
+          localStorage.removeItem("registros");
+          console.log('Registros do localStorage migrados e localStorage limpo.');
+          // Recarrega os registros do Firestore após a migração
+          await loadMileageRecords(); 
+        }
+
+        aplicarFiltro(); // Aplica filtro inicial e renderiza
+        atualizarFiltroPlacas();
+        atualizarMetricas(registrosFiltrados);
+        atualizarDashboard();
+
+      } catch (error) {
+        console.error('Erro ao carregar registros de quilometragem do Firestore:', error);
+        alert('Erro ao carregar registros: ' + error.message);
+      }
+    }
+
+    async function deleteMileageRecord(recordId) {
+      if (!confirm("Tem certeza que deseja apagar este registro?")) {
+        return;
+      }
+      try {
+        await window.firebaseDbMethods.deleteDoc(window.firebaseDbMethods.doc(window.firebaseDb, 'mileageRecords', recordId));
+        alert('Registro apagado com sucesso!');
+        loadMileageRecords(); // Recarrega os registros após apagar
+      } catch (error) {
+        console.error('Erro ao apagar registro do Firestore:', error);
+        alert('Erro ao apagar registro: ' + error.message);
+      }
+    }
+
+    async function deleteAllMileageRecords() {
+      if (!confirm("Tem certeza que deseja apagar TODOS os registros? Esta ação não pode ser desfeita!")) {
+        return;
+      }
+      try {
+        let q;
+        if (isAdmin) {
+          // Admin pode apagar todos os registros
+          q = window.firebaseDbMethods.query(
+            window.firebaseDbMethods.collection(window.firebaseDb, 'mileageRecords')
+          );
+        } else {
+          // Usuário comum pode apagar apenas seus próprios registros
+          q = window.firebaseDbMethods.query(
+            window.firebaseDbMethods.collection(window.firebaseDb, 'mileageRecords'),
+            window.firebaseDbMethods.where('userId', '==', currentUser.uid)
+          );
+        }
+        const querySnapshot = await window.firebaseDbMethods.getDocs(q);
+        const batch = window.firebaseDbMethods.writeBatch(window.firebaseDb); // Usar batch para deleção em massa
+        querySnapshot.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+        await batch.commit();
+        alert('Todos os registros apagados com sucesso!');
+        loadMileageRecords(); // Recarrega os registros após apagar
+      } catch (error) {
+        console.error('Erro ao apagar todos os registros do Firestore:', error);
+        alert('Erro ao apagar todos os registros: ' + error.message);
+      }
+    }
+
     function initializeMainApp() {
       // Atualizar data/hora automática
       function atualizarDataHora() {
@@ -721,11 +834,8 @@
       setInterval(atualizarDataHora, 1000);
 
       // Inicializar
-      atualizarMetricas(registros);
-      atualizarFiltroPlacas();
-      aplicarFiltro();
-      atualizarDashboard();
       atualizarDataHora();
+      loadMileageRecords(); // Carrega os registros do Firestore
     }
 
     // Compressão de imagens otimizada para 9x16 e mais leve
@@ -878,62 +988,6 @@
       e.target.classList.remove('required');
     });
 
-    // Salvar registro
-    function salvarRegistro() {
-      if (!validarCampos()) {
-        return;
-      }
-
-      const placa = document.getElementById("placaVeiculo").value.trim();
-      const kmInicial = parseFloat(document.getElementById("kmInicial").value);
-      const kmFinal = parseFloat(document.getElementById("kmFinal").value);
-
-      const registro = {
-        placa: placa,
-        dataHora: dataHoraInput.value,
-        kmInicial: kmInicial,
-        fotoInicial: document.getElementById("previewInicial").dataset.img || "",
-        kmFinal: kmFinal,
-        fotoFinal: document.getElementById("previewFinal").dataset.img || "",
-        kmPercorridos: kmFinal - kmInicial,
-        usuario: currentUser.email
-      };
-      
-      registros.push(registro);
-      localStorage.setItem("registros", JSON.stringify(registros));
-      
-      // Limpar formulário
-      document.getElementById("placaVeiculo").value = "";
-      document.getElementById("kmInicial").value = "";
-      document.getElementById("kmFinal").value = "";
-      document.getElementById("fotoInicial").value = "";
-      document.getElementById("fotoFinal").value = "";
-      document.getElementById("previewInicial").src = "";
-      document.getElementById("previewFinal").src = "";
-      document.getElementById("previewInicial").dataset.img = "";
-      document.getElementById("previewFinal").dataset.img = "";
-      
-      atualizarMetricas(registros);
-      atualizarFiltroPlacas();
-      aplicarFiltro();
-      atualizarDashboard();
-      
-      alert("Registro salvo com sucesso!");
-    }
-
-    // Atualizar métricas
-    function atualizarMetricas(dados) {
-      const totalKm = dados.reduce((sum, r) => sum + r.kmPercorridos, 0);
-      const mediaKm = dados.length > 0 ? totalKm / dados.length : 0;
-      const totalViagens = dados.length;
-      const maiorViagem = dados.length > 0 ? Math.max(...dados.map(r => r.kmPercorridos)) : 0;
-
-      document.getElementById("totalKm").textContent = totalKm.toFixed(1);
-      document.getElementById("mediaKm").textContent = mediaKm.toFixed(1);
-      document.getElementById("totalViagens").textContent = totalViagens;
-      document.getElementById("maiorViagem").textContent = maiorViagem.toFixed(1);
-    }
-
     // Filtros de período
     document.getElementById("filtroPeríodo").addEventListener('change', function() {
       const valor = this.value;
@@ -954,39 +1008,52 @@
       const placaFiltro = document.getElementById("filtroPlaca").value;
       const hoje = new Date();
       
+      // Começa com todos os registros carregados do Firestore
+      let registrosParaFiltrar = [...registros];
+
       // Primeiro filtrar por período
-      let registrosFiltradosPorPeriodo = [...registros];
+      let registrosFiltradosPorPeriodo = [];
       
       switch(filtro) {
         case "hoje":
           const hojeFmt = hoje.toLocaleDateString("pt-BR");
-          registrosFiltradosPorPeriodo = registros.filter(r => r.dataHora.includes(hojeFmt));
+          registrosFiltradosPorPeriodo = registrosParaFiltrar.filter(r => {
+            const recordDate = r.dataHora ? new Date(r.dataHora.split(" ")[0].split("/").reverse().join("-")) : null;
+            return recordDate && recordDate.toLocaleDateString("pt-BR") === hojeFmt;
+          });
           break;
         case "semana":
           const inicioSemana = new Date(hoje);
           inicioSemana.setDate(hoje.getDate() - hoje.getDay());
-          registrosFiltradosPorPeriodo = registros.filter(r => {
-            const dataRegistro = new Date(r.dataHora.split(" ")[0].split("/").reverse().join("-"));
-            return dataRegistro >= inicioSemana;
+          inicioSemana.setHours(0,0,0,0);
+          registrosFiltradosPorPeriodo = registrosParaFiltrar.filter(r => {
+            const recordDate = r.dataHora ? new Date(r.dataHora.split(" ")[0].split("/").reverse().join("-")) : null;
+            return recordDate && recordDate >= inicioSemana;
           });
           break;
         case "mes":
           const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-          registrosFiltradosPorPeriodo = registros.filter(r => {
-            const dataRegistro = new Date(r.dataHora.split(" ")[0].split("/").reverse().join("-"));
-            return dataRegistro >= inicioMes;
+          registrosFiltradosPorPeriodo = registrosParaFiltrar.filter(r => {
+            const recordDate = r.dataHora ? new Date(r.dataHora.split(" ")[0].split("/").reverse().join("-")) : null;
+            return recordDate && recordDate >= inicioMes;
           });
           break;
         case "personalizado":
-          const dataInicio = document.getElementById("dataInicio").value;
-          const dataFim = document.getElementById("dataFim").value;
-          if (dataInicio && dataFim) {
-            registrosFiltradosPorPeriodo = registros.filter(r => {
-              const dataRegistro = r.dataHora.split(" ")[0].split("/").reverse().join("-");
-              return dataRegistro >= dataInicio && dataRegistro <= dataFim;
+          const dataInicioStr = document.getElementById("dataInicio").value;
+          const dataFimStr = document.getElementById("dataFim").value;
+          if (dataInicioStr && dataFimStr) {
+            const dataInicio = new Date(dataInicioStr + 'T00:00:00');
+            const dataFim = new Date(dataFimStr + 'T23:59:59');
+            registrosFiltradosPorPeriodo = registrosParaFiltrar.filter(r => {
+              const recordDate = r.dataHora ? new Date(r.dataHora.split(" ")[0].split("/").reverse().join("-")) : null;
+              return recordDate && recordDate >= dataInicio && recordDate <= dataFim;
             });
+          } else {
+            registrosFiltradosPorPeriodo = registrosParaFiltrar; // Se datas personalizadas não forem preenchidas, não filtra por período
           }
           break;
+        default:
+          registrosFiltradosPorPeriodo = registrosParaFiltrar;
       }
       
       // Depois filtrar por placa
@@ -1004,44 +1071,34 @@
     // Renderizar relatórios
     function renderizarRelatorios() {
       relatoriosDiv.innerHTML = "";
-      registrosFiltrados.forEach((r, i) => {
-        const indexOriginal = registros.indexOf(r);
+      if (registrosFiltrados.length === 0) {
+        relatoriosDiv.innerHTML = '<p style="text-align: center;">Nenhum registro encontrado para os filtros aplicados.</p>';
+        return;
+      }
+      registrosFiltrados.forEach((r) => {
         const div = document.createElement("div");
         div.className = "relatorio";
         div.innerHTML = `
           <div>
             <b>${r.placa} - ${r.dataHora}</b><br>
             Km Inicial: ${r.kmInicial} | Km Final: ${r.kmFinal} | Percorridos: <strong>${r.kmPercorridos.toFixed(1)} km</strong><br>
-            <small>Usuário: ${r.usuario || 'N/A'}</small><br>
+            <small>Usuário: ${r.userEmail || 'N/A'}</small><br>
             <img src="${r.fotoInicial}" alt="Inicial" class="foto-relatorio">
             <img src="${r.fotoFinal}" alt="Final" class="foto-relatorio">
           </div>
-          <button onclick="apagarRegistro(${indexOriginal})" class="btn-small btn-danger">🗑️</button>
+          <button onclick="deleteMileageRecord('${r.id}')" class="btn-small btn-danger">🗑️</button>
         `;
         relatoriosDiv.appendChild(div);
       });
     }
 
-    function apagarRegistro(i) {
-      if (confirm("Tem certeza que deseja apagar este registro?")) {
-        registros.splice(i, 1);
-        localStorage.setItem("registros", JSON.stringify(registros));
-        atualizarMetricas(registros);
-        atualizarFiltroPlacas();
-        aplicarFiltro();
-        atualizarDashboard();
-      }
+    // Funções de apagar adaptadas para Firestore
+    function apagarRegistro(recordId) {
+      deleteMileageRecord(recordId);
     }
 
     function apagarTodos() {
-      if (confirm("Tem certeza que deseja apagar TODOS os registros? Esta ação não pode ser desfeita!")) {
-        registros = [];
-        localStorage.removeItem("registros");
-        atualizarMetricas(registros);
-        atualizarFiltroPlacas();
-        aplicarFiltro();
-        atualizarDashboard();
-      }
+      deleteAllMileageRecords();
     }
 
     // Exportar XLSX
@@ -1052,7 +1109,7 @@
         "Km Inicial": r.kmInicial,
         "Km Final": r.kmFinal,
         "Km Percorridos": r.kmPercorridos,
-        "Usuário": r.usuario || 'N/A'
+        "Usuário": r.userEmail || 'N/A'
       }));
       
       const ws = XLSX.utils.json_to_sheet(dadosExport);
@@ -1065,7 +1122,7 @@
     let chart;
     function atualizarDashboard() {
       const ctx = document.getElementById("grafico").getContext("2d");
-      const labels = registrosFiltrados.map(r => r.dataHora.split(" ")[0]);
+      const labels = registrosFiltrados.map(r => r.dataHora ? r.dataHora.split(" ")[0] : '');
       const kms = registrosFiltrados.map(r => r.kmPercorridos);
 
       if (chart) chart.destroy();
