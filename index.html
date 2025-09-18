@@ -15,7 +15,7 @@
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-    import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where, orderBy, deleteDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where, orderBy, deleteDoc, serverTimestamp, writeBatch } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
     const firebaseConfig = {
       apiKey: "AIzaSyCNUTWw3BLTg3S2KPqsnCfZC_aw5lqidas",
@@ -35,7 +35,7 @@
     window.firebaseAuth = auth;
     window.firebaseDb = db;
     window.firebaseAuthMethods = { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged };
-    window.firebaseDbMethods = { doc, setDoc, getDoc, collection, getDocs, query, where, orderBy, deleteDoc, serverTimestamp };
+    window.firebaseDbMethods = { doc, setDoc, getDoc, collection, getDocs, query, where, orderBy, deleteDoc, serverTimestamp, writeBatch };
   </script>
 
   <style>
@@ -168,12 +168,12 @@
       min-width: 150px;
     }
 
-    /* Botão de tema fixo */
+    /* Botão de tema fixo - CORRIGIDO */
     .theme-toggle {
       position: fixed;
-      top: 20px;
-      right: 20px;
-      z-index: 999;
+      top: 10px;
+      right: 10px;
+      z-index: 9999;
       background: transparent;
       border: none;
       padding: 8px;
@@ -184,6 +184,7 @@
       width: auto !important;
       min-width: auto !important;
       border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
     .theme-toggle:hover {
       background: var(--primary-color);
@@ -276,6 +277,12 @@
         margin: 20px auto;
         padding: 15px;
       }
+      /* Ajustar botão de tema no mobile */
+      .theme-toggle {
+        top: 5px;
+        right: 5px;
+        font-size: 18px;
+      }
     }
 
     /* Ocultar conteúdo principal quando não logado */
@@ -292,8 +299,8 @@
     <div class="card">
       <h1>Controle de Quilometragem</h1>
       <div class="auth-tabs">
-        <div class="auth-tab active" onclick="switchAuthTab('login')">Login</div>
-        <div class="auth-tab" onclick="switchAuthTab('register')">Cadastro</div>
+        <div class="auth-tab active" onclick="switchAuthTab(\'login\')">Login</div>
+        <div class="auth-tab" onclick="switchAuthTab(\'register\')">Cadastro</div>
       </div>
 
       <!-- Formulário de Login -->
@@ -442,7 +449,7 @@
     let registrosFiltrados = [];
 
     // Aguardar carregamento do Firebase
-    window.addEventListener('load', () => {
+    window.addEventListener(\'load\', () => {
       setTimeout(() => {
         initializeAuth();
       }, 1000);
@@ -453,26 +460,26 @@
         window.firebaseAuthMethods.onAuthStateChanged(window.firebaseAuth, async (user) => {
           if (user) {
             currentUser = user;
-            isAdmin = user.email === 'alansrocha@gmail.com';
+            isAdmin = user.email === \'alansrocha@gmail.com\';
             
             // Tentar buscar o documento do usuário no Firestore para garantir que existe
-            const userDocRef = window.firebaseDbMethods.doc(window.firebaseDb, 'users', user.uid);
+            const userDocRef = window.firebaseDbMethods.doc(window.firebaseDb, \'users\', user.uid);
             const userDocSnap = await window.firebaseDbMethods.getDoc(userDocRef);
 
             if (!userDocSnap.exists()) {
-              console.warn('Documento do usuário não encontrado no Firestore para UID:', user.uid, 'Criando agora...');
+              console.warn(\'Documento do usuário não encontrado no Firestore para UID:\', user.uid, \'Criando agora...\');
               // Se o documento não existe, cria-o (pode acontecer se o cadastro falhou na primeira vez)
               try {
                 await window.firebaseDbMethods.setDoc(userDocRef, {
                   email: user.email,
-                  name: user.displayName || 'Usuário Novo',
-                  role: user.email === 'alansrocha@gmail.com' ? 'admin' : 'user',
+                  name: user.displayName || \'Usuário Novo\',
+                  role: user.email === \'alansrocha@gmail.com\' ? \'admin\' : \'user\',
                   createdAt: window.firebaseDbMethods.serverTimestamp(),
                   revoked: false
                 });
-                console.log('Documento do usuário criado no Firestore durante onAuthStateChanged.');
+                console.log(\'Documento do usuário criado no Firestore durante onAuthStateChanged.\');
               } catch (error) {
-                console.error('Erro ao criar documento do usuário no Firestore durante onAuthStateChanged:', error);
+                console.error(\'Erro ao criar documento do usuário no Firestore durante onAuthStateChanged:\', error);
               }
             }
 
@@ -487,22 +494,22 @@
     }
 
     function showAuthScreen() {
-      document.getElementById('authScreen').classList.remove('hidden');
-      document.getElementById('mainContent').classList.add('hidden');
+      document.getElementById(\'authScreen\').classList.remove(\'hidden\');
+      document.getElementById(\'mainContent\').classList.add(\'hidden\');
     }
 
     function showMainContent() {
-      document.getElementById('authScreen').classList.add('hidden');
-      document.getElementById('mainContent').classList.remove('hidden');
+      document.getElementById(\'authScreen\').classList.add(\'hidden\');
+      document.getElementById(\'mainContent\').classList.remove(\'hidden\');
       
       // Atualizar informações do usuário
-      document.getElementById('userEmail').textContent = currentUser.email;
+      document.getElementById(\'userEmail\').textContent = currentUser.email;
       
       // Mostrar botão admin se for administrador
       if (isAdmin) {
-        document.getElementById('adminButton').classList.remove('hidden');
+        document.getElementById(\'adminButton\').classList.remove(\'hidden\');
       } else {
-        document.getElementById('adminButton').classList.add('hidden');
+        document.getElementById(\'adminButton\').classList.add(\'hidden\');
       }
 
       // Inicializar app principal
@@ -510,120 +517,120 @@
     }
 
     function switchAuthTab(tab) {
-      document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+      document.querySelectorAll(\'.auth-tab\').forEach(t => t.classList.remove(\'active\'));
+      document.querySelectorAll(\'.auth-form\').forEach(f => f.classList.remove(\'active\'));
       
-      if (tab === 'login') {
-        document.querySelector('.auth-tab:first-child').classList.add('active');
-        document.getElementById('loginForm').classList.add('active');
+      if (tab === \'login\') {
+        document.querySelector(\'.auth-tab:first-child\').classList.add(\'active\');
+        document.getElementById(\'loginForm\').classList.add(\'active\');
       } else {
-        document.querySelector('.auth-tab:last-child').classList.add('active');
-        document.getElementById('registerForm').classList.add('active');
+        document.querySelector(\'.auth-tab:last-child\').classList.add(\'active\');
+        document.getElementById(\'registerForm\').classList.add(\'active\');
       }
       
-      document.getElementById('authMessage').textContent = '';
+      document.getElementById(\'authMessage\').textContent = \'\';
     }
 
     async function login() {
-      const email = document.getElementById('loginEmail').value;
-      const password = document.getElementById('loginPassword').value;
-      const messageDiv = document.getElementById('authMessage');
+      const email = document.getElementById(\'loginEmail\').value;
+      const password = document.getElementById(\'loginPassword\').value;
+      const messageDiv = document.getElementById(\'authMessage\');
 
       if (!email || !password) {
-        messageDiv.textContent = 'Por favor, preencha todos os campos.';
-        messageDiv.style.color = 'red';
+        messageDiv.textContent = \'Por favor, preencha todos os campos.\';
+        messageDiv.style.color = \'red\';
         return;
       }
 
       try {
         await window.firebaseAuthMethods.signInWithEmailAndPassword(window.firebaseAuth, email, password);
-        messageDiv.textContent = 'Login realizado com sucesso!';
-        messageDiv.style.color = 'green';
+        messageDiv.textContent = \'Login realizado com sucesso!\';
+        messageDiv.style.color = \'green\';
       } catch (error) {
-        console.error('Erro detalhado no login:', error);
-        messageDiv.textContent = 'Erro no login: ' + error.message;
-        messageDiv.style.color = 'red';
+        console.error(\'Erro detalhado no login:\', error);
+        messageDiv.textContent = \'Erro no login: \' + error.message;
+        messageDiv.style.color = \'red\';
       }
     }
 
     async function register() {
-      const email = document.getElementById('registerEmail').value;
-      const password = document.getElementById('registerPassword').value;
-      const name = document.getElementById('registerName').value;
-      const messageDiv = document.getElementById('authMessage');
+      const email = document.getElementById(\'registerEmail\').value;
+      const password = document.getElementById(\'registerPassword\').value;
+      const name = document.getElementById(\'registerName\').value;
+      const messageDiv = document.getElementById(\'authMessage\');
 
       if (!email || !password || !name) {
-        messageDiv.textContent = 'Por favor, preencha todos os campos.';
-        messageDiv.style.color = 'red';
+        messageDiv.textContent = \'Por favor, preencha todos os campos.\';
+        messageDiv.style.color = \'red\';
         return;
       }
 
       if (password.length < 6) {
-        messageDiv.textContent = 'A senha deve ter pelo menos 6 caracteres.';
-        messageDiv.style.color = 'red';
+        messageDiv.textContent = \'A senha deve ter pelo menos 6 caracteres.\';
+        messageDiv.style.color = \'red\';
         return;
       }
 
       try {
-        console.log('Iniciando cadastro para:', email);
-        messageDiv.textContent = 'Criando conta...';
-        messageDiv.style.color = 'blue';
+        console.log(\'Iniciando cadastro para:\', email);
+        messageDiv.textContent = \'Criando conta...\';
+        messageDiv.style.color = \'blue\';
 
         // Criar usuário no Firebase Auth
         const userCredential = await window.firebaseAuthMethods.createUserWithEmailAndPassword(window.firebaseAuth, email, password);
         const user = userCredential.user;
         
-        console.log('Usuário criado no Auth:', user.uid);
-        messageDiv.textContent = 'Salvando dados do usuário no Firestore...';
+        console.log(\'Usuário criado no Auth:\', user.uid);
+        messageDiv.textContent = \'Salvando dados do usuário no Firestore...\';
 
         // Preparar dados do usuário
         const userData = {
           email: email,
           name: name,
-          role: email === 'alansrocha@gmail.com' ? 'admin' : 'user',
+          role: email === \'alansrocha@gmail.com\' ? \'admin\' : \'user\',
           createdAt: window.firebaseDbMethods.serverTimestamp(),
           revoked: false
         };
 
-        console.log('Dados a serem salvos no Firestore:', userData);
+        console.log(\'Dados a serem salvos no Firestore:\', userData);
 
         // Salvar dados do usuário no Firestore
-        const userDocRef = window.firebaseDbMethods.doc(window.firebaseDb, 'users', user.uid);
+        const userDocRef = window.firebaseDbMethods.doc(window.firebaseDb, \'users\', user.uid);
         await window.firebaseDbMethods.setDoc(userDocRef, userData);
         
-        console.log('Documento do usuário salvo no Firestore com sucesso para UID:', user.uid);
+        console.log(\'Documento do usuário salvo no Firestore com sucesso para UID:\', user.uid);
         
-        messageDiv.textContent = 'Cadastro realizado com sucesso!';
-        messageDiv.style.color = 'green';
+        messageDiv.textContent = \'Cadastro realizado com sucesso!\';
+        messageDiv.style.color = \'green\';
 
         // Limpar formulário
-        document.getElementById('registerEmail').value = '';
-        document.getElementById('registerPassword').value = '';
-        document.getElementById('registerName').value = '';
+        document.getElementById(\'registerEmail\').value = \'\';
+        document.getElementById(\'registerPassword\').value = \'\';
+        document.getElementById(\'registerName\').value = \'\';
 
       } catch (error) {
-        console.error('Erro detalhado no cadastro:', error);
-        console.error('Código do erro:', error.code);
-        console.error('Mensagem do erro:', error.message);
+        console.error(\'Erro detalhado no cadastro:\', error);
+        console.error(\'Código do erro:\', error.code);
+        console.error(\'Mensagem do erro:\', error.message);
         
-        let errorMessage = 'Erro no cadastro: ';
+        let errorMessage = \'Erro no cadastro: \';
         
         switch(error.code) {
-          case 'auth/email-already-in-use':
-            errorMessage += 'Este email já está em uso.';
+          case \'auth/email-already-in-use\':
+            errorMessage += \'Este email já está em uso.\';
             break;
-          case 'auth/invalid-email':
-            errorMessage += 'Email inválido.';
+          case \'auth/invalid-email\':
+            errorMessage += \'Email inválido.\';
             break;
-          case 'auth/weak-password':
-            errorMessage += 'Senha muito fraca.';
+          case \'auth/weak-password\':
+            errorMessage += \'Senha muito fraca.\';
             break;
           default:
             errorMessage += error.message;
         }
         
         messageDiv.textContent = errorMessage;
-        messageDiv.style.color = 'red';
+        messageDiv.style.color = \'red\';
       }
     }
 
@@ -631,35 +638,35 @@
       try {
         await window.firebaseAuthMethods.signOut(window.firebaseAuth);
       } catch (error) {
-        console.error('Erro ao fazer logout:', error);
+        console.error(\'Erro ao fazer logout:\', error);
       }
     }
 
     function toggleAdminPanel() {
-      const panel = document.getElementById('adminPanel');
-      panel.classList.toggle('hidden');
+      const panel = document.getElementById(\'adminPanel\');
+      panel.classList.toggle(\'hidden\');
     }
 
     async function loadUsers() {
       if (!isAdmin) {
-        alert('Acesso negado. Apenas administradores podem ver esta lista.');
+        alert(\'Acesso negado. Apenas administradores podem ver esta lista.\');
         return;
       }
 
       try {
-        console.log('Carregando usuários...');
-        const usersCollection = window.firebaseDbMethods.collection(window.firebaseDb, 'users');
+        console.log(\'Carregando usuários...\');
+        const usersCollection = window.firebaseDbMethods.collection(window.firebaseDb, \'users\');
         const snapshot = await window.firebaseDbMethods.getDocs(usersCollection);
         
-        console.log('Snapshot obtido:', snapshot);
-        console.log('Número de documentos:', snapshot.size);
+        console.log(\'Snapshot obtido:\', snapshot);
+        console.log(\'Número de documentos:\', snapshot.size);
         
-        const tbody = document.getElementById('usersTableBody');
-        tbody.innerHTML = '';
+        const tbody = document.getElementById(\'usersTableBody\');
+        tbody.innerHTML = \'\';
 
         if (snapshot.empty) {
-          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Nenhum usuário encontrado</td></tr>';
-          console.log('Nenhum usuário encontrado no Firestore');
+          tbody.innerHTML = \'<tr><td colspan="4" style="text-align: center;">Nenhum usuário encontrado</td></tr>\';
+          console.log(\'Nenhum usuário encontrado no Firestore\');
           return;
         }
 
@@ -671,21 +678,21 @@
           
           const row = tbody.insertRow();
           
-          row.insertCell(0).textContent = userData.email || '';
-          row.insertCell(1).textContent = userData.name || '';
-          row.insertCell(2).textContent = userData.role || 'user';
+          row.insertCell(0).textContent = userData.email || \'\';
+          row.insertCell(1).textContent = userData.name || \'\';
+          row.insertCell(2).textContent = userData.role || \'user\';
           
           // Tratar data de criação
-          let dateText = '';
+          let dateText = \'\';
           if (userData.createdAt) {
             try {
               if (userData.createdAt.toDate) {
-                dateText = userData.createdAt.toDate().toLocaleDateString('pt-BR');
+                dateText = userData.createdAt.toDate().toLocaleDateString(\'pt-BR\');
               } else {
-                dateText = new Date(userData.createdAt).toLocaleDateString('pt-BR');
+                dateText = new Date(userData.createdAt).toLocaleDateString(\'pt-BR\');
               }
             } catch (e) {
-              dateText = 'Data inválida';
+              dateText = \'Data inválida\';
             }
           }
           row.insertCell(3).textContent = dateText;
@@ -694,13 +701,13 @@
         console.log(`Total de usuários carregados: ${userCount}`);
         
       } catch (error) {
-        console.error('Erro detalhado ao carregar usuários:', error);
-        alert('Erro ao carregar usuários: ' + error.message);
+        console.error(\'Erro detalhado ao carregar usuários:\', error);
+        alert(\'Erro ao carregar usuários: \' + error.message);
       }
     }
 
     function exportUsersToExcel() {
-      const table = document.getElementById('usersTable');
+      const table = document.getElementById(\'usersTable\');
       const rows = Array.from(table.rows);
       
       const data = rows.map(row => {
@@ -722,16 +729,18 @@
         if (isAdmin) {
           // Admin vê todos os registros
           q = window.firebaseDbMethods.query(
-            window.firebaseDbMethods.collection(window.firebaseDb, 'mileageRecords'),
-            window.firebaseDbMethods.orderBy('timestamp', 'desc')
+            window.firebaseDbMethods.collection(window.firebaseDb, \'mileageRecords\'),
+            window.firebaseDbMethods.orderBy(\'timestamp\', \'desc\')
           );
+          console.log(\'Admin: carregando TODOS os registros de quilometragem...\');
         } else {
           // Usuário comum vê apenas seus próprios registros
           q = window.firebaseDbMethods.query(
-            window.firebaseDbMethods.collection(window.firebaseDb, 'mileageRecords'),
-            window.firebaseDbMethods.where('userId', '==', currentUser.uid),
-            window.firebaseDbMethods.orderBy('timestamp', 'desc')
+            window.firebaseDbMethods.collection(window.firebaseDb, \'mileageRecords\'),
+            window.firebaseDbMethods.where(\'userId\', \'==\', currentUser.uid),
+            window.firebaseDbMethods.orderBy(\'timestamp\', \'desc\')
           );
+          console.log(\'Usuário comum: carregando apenas registros próprios...\');
         }
 
         const querySnapshot = await window.firebaseDbMethods.getDocs(q);
@@ -740,12 +749,12 @@
           allMileageRecords.push({ id: doc.id, ...doc.data() });
         });
         registros = [...allMileageRecords]; // Atualiza a variável global de registros
-        console.log('Registros de quilometragem carregados do Firestore:', registros);
+        console.log(`Registros de quilometragem carregados do Firestore (${isAdmin ? \'ADMIN\' : \'USER\'}):`, registros.length, \'registros\');
         
         // Se houver dados no localStorage, migrar para o Firestore e limpar localStorage
         const localRegistros = JSON.parse(localStorage.getItem("registros")) || [];
         if (localRegistros.length > 0) {
-          console.log('Migrando registros do localStorage para Firestore...');
+          console.log(\'Migrando registros do localStorage para Firestore...\');
           for (const rec of localRegistros) {
             // Verifica se o registro já existe no Firestore para evitar duplicatas
             const exists = allMileageRecords.some(fr => 
@@ -754,7 +763,8 @@
               fr.kmInicial === rec.kmInicial
             );
             if (!exists) {
-              await window.firebaseDbMethods.setDoc(window.firebaseDbMethods.doc(window.firebaseDb, 'mileageRecords', window.firebaseDbMethods.doc(window.firebaseDb, 'mileageRecords').id), {
+              const docRef = window.firebaseDbMethods.doc(window.firebaseDbMethods.collection(window.firebaseDb, \'mileageRecords\'));
+              await window.firebaseDbMethods.setDoc(docRef, {
                 ...rec,
                 userId: currentUser.uid,
                 userEmail: currentUser.email, // Adicionado para migração
@@ -763,9 +773,10 @@
             }
           }
           localStorage.removeItem("registros");
-          console.log('Registros do localStorage migrados e localStorage limpo.');
+          console.log(\'Registros do localStorage migrados e localStorage limpo.\');
           // Recarrega os registros do Firestore após a migração
           await loadMileageRecords(); 
+          return; // Sai da função para evitar executar o resto duas vezes
         }
 
         aplicarFiltro(); // Aplica filtro inicial e renderiza
@@ -774,8 +785,8 @@
         atualizarDashboard();
 
       } catch (error) {
-        console.error('Erro ao carregar registros de quilometragem do Firestore:', error);
-        alert('Erro ao carregar registros: ' + error.message);
+        console.error(\'Erro ao carregar registros de quilometragem do Firestore:\', error);
+        alert(\'Erro ao carregar registros: \' + error.message);
       }
     }
 
@@ -784,12 +795,12 @@
         return;
       }
       try {
-        await window.firebaseDbMethods.deleteDoc(window.firebaseDbMethods.doc(window.firebaseDb, 'mileageRecords', recordId));
-        alert('Registro apagado com sucesso!');
+        await window.firebaseDbMethods.deleteDoc(window.firebaseDbMethods.doc(window.firebaseDb, \'mileageRecords\', recordId));
+        alert(\'Registro apagado com sucesso!\');
         loadMileageRecords(); // Recarrega os registros após apagar
       } catch (error) {
-        console.error('Erro ao apagar registro do Firestore:', error);
-        alert('Erro ao apagar registro: ' + error.message);
+        console.error(\'Erro ao apagar registro do Firestore:\', error);
+        alert(\'Erro ao apagar registro: \' + error.message);
       }
     }
 
@@ -802,13 +813,13 @@
         if (isAdmin) {
           // Admin pode apagar todos os registros
           q = window.firebaseDbMethods.query(
-            window.firebaseDbMethods.collection(window.firebaseDb, 'mileageRecords')
+            window.firebaseDbMethods.collection(window.firebaseDb, \'mileageRecords\')
           );
         } else {
           // Usuário comum pode apagar apenas seus próprios registros
           q = window.firebaseDbMethods.query(
-            window.firebaseDbMethods.collection(window.firebaseDb, 'mileageRecords'),
-            window.firebaseDbMethods.where('userId', '==', currentUser.uid)
+            window.firebaseDbMethods.collection(window.firebaseDb, \'mileageRecords\'),
+            window.firebaseDbMethods.where(\'userId\', \'==\', currentUser.uid)
           );
         }
         const querySnapshot = await window.firebaseDbMethods.getDocs(q);
@@ -817,11 +828,11 @@
           batch.delete(doc.ref);
         });
         await batch.commit();
-        alert('Todos os registros apagados com sucesso!');
+        alert(\'Todos os registros apagados com sucesso!\');
         loadMileageRecords(); // Recarrega os registros após apagar
       } catch (error) {
-        console.error('Erro ao apagar todos os registros do Firestore:', error);
-        alert('Erro ao apagar todos os registros: ' + error.message);
+        console.error(\'Erro ao apagar todos os registros do Firestore:\', error);
+        alert(\'Erro ao apagar todos os registros: \' + error.message);
       }
     }
 
@@ -890,37 +901,37 @@
       const fotoFinal = document.getElementById("fotoFinal").files[0];
 
       // Remover classes de erro anteriores
-      document.querySelectorAll('.required').forEach(el => el.classList.remove('required'));
+      document.querySelectorAll(\'.required\').forEach(el => el.classList.remove(\'required\'));
 
       let erros = [];
 
       if (!placa) {
-        document.getElementById("placaVeiculo").classList.add('required');
+        document.getElementById("placaVeiculo").classList.add(\'required\');
         erros.push("Placa do veículo é obrigatória");
       }
 
       if (!kmInicial) {
-        document.getElementById("kmInicial").classList.add('required');
+        document.getElementById("kmInicial").classList.add(\'required\');
         erros.push("Quilometragem inicial é obrigatória");
       }
 
       if (!kmFinal) {
-        document.getElementById("kmFinal").classList.add('required');
+        document.getElementById("kmFinal").classList.add(\'required\');
         erros.push("Quilometragem final é obrigatória");
       }
 
       if (!fotoInicial) {
-        document.getElementById("fotoInicial").classList.add('required');
+        document.getElementById("fotoInicial").classList.add(\'required\');
         erros.push("Foto inicial é obrigatória");
       }
 
       if (!fotoFinal) {
-        document.getElementById("fotoFinal").classList.add('required');
+        document.getElementById("fotoFinal").classList.add(\'required\');
         erros.push("Foto final é obrigatória");
       }
 
       if (kmInicial && kmFinal && parseFloat(kmFinal) <= parseFloat(kmInicial)) {
-        document.getElementById("kmFinal").classList.add('required');
+        document.getElementById("kmFinal").classList.add(\'required\');
         erros.push("A quilometragem final deve ser maior que a inicial");
       }
 
@@ -938,7 +949,7 @@
       const placasUnicas = [...new Set(registros.map(r => r.placa))].sort();
       
       // Limpar opções existentes (exceto "Todas as placas")
-      filtroPlaca.innerHTML = '<option value="todas">Todas as placas</option>';
+      filtroPlaca.innerHTML = \'<option value="todas">Todas as placas</option>\';
       
       // Adicionar placas únicas
       placasUnicas.forEach(placa => {
@@ -949,47 +960,60 @@
       });
     }
 
+    // Atualizar métricas
+    function atualizarMetricas(dados) {
+      const totalKm = dados.reduce((sum, r) => sum + r.kmPercorridos, 0);
+      const mediaKm = dados.length > 0 ? totalKm / dados.length : 0;
+      const totalViagens = dados.length;
+      const maiorViagem = dados.length > 0 ? Math.max(...dados.map(r => r.kmPercorridos)) : 0;
+
+      document.getElementById("totalKm").textContent = totalKm.toFixed(1);
+      document.getElementById("mediaKm").textContent = mediaKm.toFixed(1);
+      document.getElementById("totalViagens").textContent = totalViagens;
+      document.getElementById("maiorViagem").textContent = maiorViagem.toFixed(1);
+    }
+
     // Previews
-    document.getElementById("fotoInicial").addEventListener('change', e => {
+    document.getElementById("fotoInicial").addEventListener(\'change\', e => {
       if (e.target.files[0]) {
         compressImage(e.target.files[0], (dataUrl) => {
           document.getElementById("previewInicial").src = dataUrl;
           document.getElementById("previewInicial").dataset.img = dataUrl;
-          e.target.classList.remove('required');
+          e.target.classList.remove(\'required\');
         });
       }
     });
-    document.getElementById("fotoFinal").addEventListener('change', e => {
+    document.getElementById("fotoFinal").addEventListener(\'change\', e => {
       if (e.target.files[0]) {
         compressImage(e.target.files[0], (dataUrl) => {
           document.getElementById("previewFinal").src = dataUrl;
           document.getElementById("previewFinal").dataset.img = dataUrl;
-          e.target.classList.remove('required');
+          e.target.classList.remove(\'required\');
         });
       }
     });
 
     // Remover classe de erro ao digitar
-    document.getElementById("placaVeiculo").addEventListener('input', e => {
-      e.target.classList.remove('required');
+    document.getElementById("placaVeiculo").addEventListener(\'input\', e => {
+      e.target.classList.remove(\'required\');
       // Formatar placa automaticamente
-      let valor = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      let valor = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, \'\');
       if (valor.length > 3) {
-        valor = valor.substring(0, 3) + '-' + valor.substring(3, 7);
+        valor = valor.substring(0, 3) + \'-\' + valor.substring(3, 7);
       }
       e.target.value = valor;
     });
 
-    document.getElementById("kmInicial").addEventListener('input', e => {
-      e.target.classList.remove('required');
+    document.getElementById("kmInicial").addEventListener(\'input\', e => {
+      e.target.classList.remove(\'required\');
     });
 
-    document.getElementById("kmFinal").addEventListener('input', e => {
-      e.target.classList.remove('required');
+    document.getElementById("kmFinal").addEventListener(\'input\', e => {
+      e.target.classList.remove(\'required\');
     });
 
     // Filtros de período
-    document.getElementById("filtroPeríodo").addEventListener('change', function() {
+    document.getElementById("filtroPeríodo").addEventListener(\'change\', function() {
       const valor = this.value;
       const dataInicio = document.getElementById("dataInicio");
       const dataFim = document.getElementById("dataFim");
@@ -1002,6 +1026,25 @@
         dataFim.style.display = "none";
       }
     });
+
+    // Função auxiliar para converter data brasileira para objeto Date
+    function parseDataBrasileira(dataStr) {
+      if (!dataStr) return null;
+      
+      // Extrair apenas a parte da data (antes do espaço, se houver)
+      const datePart = dataStr.split(\' \')[0];
+      
+      // Verificar se está no formato dd/mm/yyyy
+      const parts = datePart.split(\'/\');
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1; // Mês é 0-indexado no JavaScript
+        const year = parseInt(parts[2], 10);
+        return new Date(year, month, day);
+      }
+      
+      return null;
+    }
 
     function aplicarFiltro() {
       const filtro = document.getElementById("filtroPeríodo").value;
@@ -1018,7 +1061,7 @@
         case "hoje":
           const hojeFmt = hoje.toLocaleDateString("pt-BR");
           registrosFiltradosPorPeriodo = registrosParaFiltrar.filter(r => {
-            const recordDate = r.dataHora ? new Date(r.dataHora.split(" ")[0].split("/").reverse().join("-")) : null;
+            const recordDate = parseDataBrasileira(r.dataHora);
             return recordDate && recordDate.toLocaleDateString("pt-BR") === hojeFmt;
           });
           break;
@@ -1027,14 +1070,14 @@
           inicioSemana.setDate(hoje.getDate() - hoje.getDay());
           inicioSemana.setHours(0,0,0,0);
           registrosFiltradosPorPeriodo = registrosParaFiltrar.filter(r => {
-            const recordDate = r.dataHora ? new Date(r.dataHora.split(" ")[0].split("/").reverse().join("-")) : null;
+            const recordDate = parseDataBrasileira(r.dataHora);
             return recordDate && recordDate >= inicioSemana;
           });
           break;
         case "mes":
           const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
           registrosFiltradosPorPeriodo = registrosParaFiltrar.filter(r => {
-            const recordDate = r.dataHora ? new Date(r.dataHora.split(" ")[0].split("/").reverse().join("-")) : null;
+            const recordDate = parseDataBrasileira(r.dataHora);
             return recordDate && recordDate >= inicioMes;
           });
           break;
@@ -1042,10 +1085,10 @@
           const dataInicioStr = document.getElementById("dataInicio").value;
           const dataFimStr = document.getElementById("dataFim").value;
           if (dataInicioStr && dataFimStr) {
-            const dataInicio = new Date(dataInicioStr + 'T00:00:00');
-            const dataFim = new Date(dataFimStr + 'T23:59:59');
+            const dataInicio = new Date(dataInicioStr + \'T00:00:00\');
+            const dataFim = new Date(dataFimStr + \'T23:59:59\');
             registrosFiltradosPorPeriodo = registrosParaFiltrar.filter(r => {
-              const recordDate = r.dataHora ? new Date(r.dataHora.split(" ")[0].split("/").reverse().join("-")) : null;
+              const recordDate = parseDataBrasileira(r.dataHora);
               return recordDate && recordDate >= dataInicio && recordDate <= dataFim;
             });
           } else {
@@ -1063,6 +1106,8 @@
         registrosFiltrados = registrosFiltradosPorPeriodo;
       }
       
+      console.log(`Filtro aplicado: ${filtro}, Placa: ${placaFiltro}, Registros encontrados: ${registrosFiltrados.length}`);
+      
       renderizarRelatorios();
       atualizarDashboard();
       atualizarMetricas(registrosFiltrados);
@@ -1072,7 +1117,7 @@
     function renderizarRelatorios() {
       relatoriosDiv.innerHTML = "";
       if (registrosFiltrados.length === 0) {
-        relatoriosDiv.innerHTML = '<p style="text-align: center;">Nenhum registro encontrado para os filtros aplicados.</p>';
+        relatoriosDiv.innerHTML = \'<p style="text-align: center;">Nenhum registro encontrado para os filtros aplicados.</p>\';
         return;
       }
       registrosFiltrados.forEach((r) => {
@@ -1082,11 +1127,11 @@
           <div>
             <b>${r.placa} - ${r.dataHora}</b><br>
             Km Inicial: ${r.kmInicial} | Km Final: ${r.kmFinal} | Percorridos: <strong>${r.kmPercorridos.toFixed(1)} km</strong><br>
-            <small>Usuário: ${r.userEmail || 'N/A'}</small><br>
+            <small>Usuário: ${r.userEmail || \'N/A\'}</small><br>
             <img src="${r.fotoInicial}" alt="Inicial" class="foto-relatorio">
             <img src="${r.fotoFinal}" alt="Final" class="foto-relatorio">
           </div>
-          <button onclick="deleteMileageRecord('${r.id}')" class="btn-small btn-danger">🗑️</button>
+          <button onclick="deleteMileageRecord(\'${r.id}\')" class="btn-small btn-danger">🗑️</button>
         `;
         relatoriosDiv.appendChild(div);
       });
@@ -1109,7 +1154,7 @@
         "Km Inicial": r.kmInicial,
         "Km Final": r.kmFinal,
         "Km Percorridos": r.kmPercorridos,
-        "Usuário": r.userEmail || 'N/A'
+        "Usuário": r.userEmail || \'N/A\'
       }));
       
       const ws = XLSX.utils.json_to_sheet(dadosExport);
@@ -1122,7 +1167,7 @@
     let chart;
     function atualizarDashboard() {
       const ctx = document.getElementById("grafico").getContext("2d");
-      const labels = registrosFiltrados.map(r => r.dataHora ? r.dataHora.split(" ")[0] : '');
+      const labels = registrosFiltrados.map(r => r.dataHora ? r.dataHora.split(\' \')[0] : \'\');
       const kms = registrosFiltrados.map(r => r.kmPercorridos);
 
       if (chart) chart.destroy();
@@ -1152,20 +1197,20 @@
               beginAtZero: true,
               title: {
                 display: true,
-                text: 'Quilômetros'
+                text: \'Quilômetros\'
               }
             },
             x: {
               title: {
                 display: true,
-                text: 'Data'
+                text: \'Data\'
               }
             }
           },
           plugins: {
             legend: {
               display: true,
-              position: 'top'
+              position: \'top\'
             }
           }
         }
@@ -1174,7 +1219,7 @@
 
     // Alternância de tema
     const themeToggle = document.getElementById("themeToggle");
-    themeToggle.addEventListener('click', () => {
+    themeToggle.addEventListener(\'click\', () => {
       document.body.dataset.theme =
         document.body.dataset.theme === "dark" ? "light" : "dark";
       themeToggle.textContent = document.body.dataset.theme === "dark" ? "☀️" : "🌙";
@@ -1189,14 +1234,14 @@
     }
 
     // Registrar Service Worker
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js')
+    if (\'serviceWorker\' in navigator) {
+      window.addEventListener(\'load\', () => {
+        navigator.serviceWorker.register(\'service-worker.js\')
           .then((registration) => {
-            console.log('SW registrado com sucesso: ', registration);
+            console.log(\'SW registrado com sucesso: \', registration);
           })
           .catch((registrationError) => {
-            console.log('SW falhou ao registrar: ', registrationError);
+            console.log(\'SW falhou ao registrar: \', registrationError);
           });
       });
     }
