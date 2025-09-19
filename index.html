@@ -299,8 +299,8 @@
     <div class="card">
       <h1>Controle de Quilometragem</h1>
       <div class="auth-tabs">
-        <div class="auth-tab active" onclick="switchAuthTab(\'login\')">Login</div>
-        <div class="auth-tab" onclick="switchAuthTab(\'register\')">Cadastro</div>
+        <div class="auth-tab active" onclick="switchAuthTab('login')">Login</div>
+        <div class="auth-tab" onclick="switchAuthTab('register')">Cadastro</div>
       </div>
 
       <!-- Formulário de Login -->
@@ -449,7 +449,7 @@
     let registrosFiltrados = [];
 
     // Aguardar carregamento do Firebase
-    window.addEventListener(\'load\', () => {
+    window.addEventListener('load', () => {
       setTimeout(() => {
         initializeAuth();
       }, 1000);
@@ -460,26 +460,26 @@
         window.firebaseAuthMethods.onAuthStateChanged(window.firebaseAuth, async (user) => {
           if (user) {
             currentUser = user;
-            isAdmin = user.email === \'alansrocha@gmail.com\';
+            isAdmin = user.email === 'alansrocha@gmail.com';
             
             // Tentar buscar o documento do usuário no Firestore para garantir que existe
-            const userDocRef = window.firebaseDbMethods.doc(window.firebaseDb, \'users\', user.uid);
+            const userDocRef = window.firebaseDbMethods.doc(window.firebaseDb, 'users', user.uid);
             const userDocSnap = await window.firebaseDbMethods.getDoc(userDocRef);
 
             if (!userDocSnap.exists()) {
-              console.warn(\'Documento do usuário não encontrado no Firestore para UID:\', user.uid, \'Criando agora...\');
+              console.warn('Documento do usuário não encontrado no Firestore para UID:', user.uid, 'Criando agora...');
               // Se o documento não existe, cria-o (pode acontecer se o cadastro falhou na primeira vez)
               try {
                 await window.firebaseDbMethods.setDoc(userDocRef, {
                   email: user.email,
-                  name: user.displayName || \'Usuário Novo\',
-                  role: user.email === \'alansrocha@gmail.com\' ? \'admin\' : \'user\',
+                  name: user.displayName || 'Usuário Novo',
+                  role: user.email === 'alansrocha@gmail.com' ? 'admin' : 'user',
                   createdAt: window.firebaseDbMethods.serverTimestamp(),
                   revoked: false
                 });
-                console.log(\'Documento do usuário criado no Firestore durante onAuthStateChanged.\');
+                console.log('Documento do usuário criado no Firestore durante onAuthStateChanged.');
               } catch (error) {
-                console.error(\'Erro ao criar documento do usuário no Firestore durante onAuthStateChanged:\', error);
+                console.error('Erro ao criar documento do usuário no Firestore durante onAuthStateChanged:', error);
               }
             }
 
@@ -494,22 +494,22 @@
     }
 
     function showAuthScreen() {
-      document.getElementById(\'authScreen\').classList.remove(\'hidden\');
-      document.getElementById(\'mainContent\').classList.add(\'hidden\');
+      document.getElementById('authScreen').classList.remove('hidden');
+      document.getElementById('mainContent').classList.add('hidden');
     }
 
     function showMainContent() {
-      document.getElementById(\'authScreen\').classList.add(\'hidden\');
-      document.getElementById(\'mainContent\').classList.remove(\'hidden\');
+      document.getElementById('authScreen').classList.add('hidden');
+      document.getElementById('mainContent').classList.remove('hidden');
       
       // Atualizar informações do usuário
-      document.getElementById(\'userEmail\').textContent = currentUser.email;
+      document.getElementById('userEmail').textContent = currentUser.email;
       
       // Mostrar botão admin se for administrador
       if (isAdmin) {
-        document.getElementById(\'adminButton\').classList.remove(\'hidden\');
+        document.getElementById('adminButton').classList.remove('hidden');
       } else {
-        document.getElementById(\'adminButton\').classList.add(\'hidden\');
+        document.getElementById('adminButton').classList.add('hidden');
       }
 
       // Inicializar app principal
@@ -517,120 +517,120 @@
     }
 
     function switchAuthTab(tab) {
-      document.querySelectorAll(\'.auth-tab\').forEach(t => t.classList.remove(\'active\'));
-      document.querySelectorAll(\'.auth-form\').forEach(f => f.classList.remove(\'active\'));
+      document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
       
-      if (tab === \'login\') {
-        document.querySelector(\'.auth-tab:first-child\').classList.add(\'active\');
-        document.getElementById(\'loginForm\').classList.add(\'active\');
+      if (tab === 'login') {
+        document.querySelector('.auth-tab:first-child').classList.add('active');
+        document.getElementById('loginForm').classList.add('active');
       } else {
-        document.querySelector(\'.auth-tab:last-child\').classList.add(\'active\');
-        document.getElementById(\'registerForm\').classList.add(\'active\');
+        document.querySelector('.auth-tab:last-child').classList.add('active');
+        document.getElementById('registerForm').classList.add('active');
       }
       
-      document.getElementById(\'authMessage\').textContent = \'\';
+      document.getElementById('authMessage').textContent = '';
     }
 
     async function login() {
-      const email = document.getElementById(\'loginEmail\').value;
-      const password = document.getElementById(\'loginPassword\').value;
-      const messageDiv = document.getElementById(\'authMessage\');
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      const messageDiv = document.getElementById('authMessage');
 
       if (!email || !password) {
-        messageDiv.textContent = \'Por favor, preencha todos os campos.\';
-        messageDiv.style.color = \'red\';
+        messageDiv.textContent = 'Por favor, preencha todos os campos.';
+        messageDiv.style.color = 'red';
         return;
       }
 
       try {
         await window.firebaseAuthMethods.signInWithEmailAndPassword(window.firebaseAuth, email, password);
-        messageDiv.textContent = \'Login realizado com sucesso!\';
-        messageDiv.style.color = \'green\';
+        messageDiv.textContent = 'Login realizado com sucesso!';
+        messageDiv.style.color = 'green';
       } catch (error) {
-        console.error(\'Erro detalhado no login:\', error);
-        messageDiv.textContent = \'Erro no login: \' + error.message;
-        messageDiv.style.color = \'red\';
+        console.error('Erro detalhado no login:', error);
+        messageDiv.textContent = 'Erro no login: ' + error.message;
+        messageDiv.style.color = 'red';
       }
     }
 
     async function register() {
-      const email = document.getElementById(\'registerEmail\').value;
-      const password = document.getElementById(\'registerPassword\').value;
-      const name = document.getElementById(\'registerName\').value;
-      const messageDiv = document.getElementById(\'authMessage\');
+      const email = document.getElementById('registerEmail').value;
+      const password = document.getElementById('registerPassword').value;
+      const name = document.getElementById('registerName').value;
+      const messageDiv = document.getElementById('authMessage');
 
       if (!email || !password || !name) {
-        messageDiv.textContent = \'Por favor, preencha todos os campos.\';
-        messageDiv.style.color = \'red\';
+        messageDiv.textContent = 'Por favor, preencha todos os campos.';
+        messageDiv.style.color = 'red';
         return;
       }
 
       if (password.length < 6) {
-        messageDiv.textContent = \'A senha deve ter pelo menos 6 caracteres.\';
-        messageDiv.style.color = \'red\';
+        messageDiv.textContent = 'A senha deve ter pelo menos 6 caracteres.';
+        messageDiv.style.color = 'red';
         return;
       }
 
       try {
-        console.log(\'Iniciando cadastro para:\', email);
-        messageDiv.textContent = \'Criando conta...\';
-        messageDiv.style.color = \'blue\';
+        console.log('Iniciando cadastro para:', email);
+        messageDiv.textContent = 'Criando conta...';
+        messageDiv.style.color = 'blue';
 
         // Criar usuário no Firebase Auth
         const userCredential = await window.firebaseAuthMethods.createUserWithEmailAndPassword(window.firebaseAuth, email, password);
         const user = userCredential.user;
         
-        console.log(\'Usuário criado no Auth:\', user.uid);
-        messageDiv.textContent = \'Salvando dados do usuário no Firestore...\';
+        console.log('Usuário criado no Auth:', user.uid);
+        messageDiv.textContent = 'Salvando dados do usuário no Firestore...';
 
         // Preparar dados do usuário
         const userData = {
           email: email,
           name: name,
-          role: email === \'alansrocha@gmail.com\' ? \'admin\' : \'user\',
+          role: email === 'alansrocha@gmail.com' ? 'admin' : 'user',
           createdAt: window.firebaseDbMethods.serverTimestamp(),
           revoked: false
         };
 
-        console.log(\'Dados a serem salvos no Firestore:\', userData);
+        console.log('Dados a serem salvos no Firestore:', userData);
 
         // Salvar dados do usuário no Firestore
-        const userDocRef = window.firebaseDbMethods.doc(window.firebaseDb, \'users\', user.uid);
+        const userDocRef = window.firebaseDbMethods.doc(window.firebaseDb, 'users', user.uid);
         await window.firebaseDbMethods.setDoc(userDocRef, userData);
         
-        console.log(\'Documento do usuário salvo no Firestore com sucesso para UID:\', user.uid);
+        console.log('Documento do usuário salvo no Firestore com sucesso para UID:', user.uid);
         
-        messageDiv.textContent = \'Cadastro realizado com sucesso!\';
-        messageDiv.style.color = \'green\';
+        messageDiv.textContent = 'Cadastro realizado com sucesso!';
+        messageDiv.style.color = 'green';
 
         // Limpar formulário
-        document.getElementById(\'registerEmail\').value = \'\';
-        document.getElementById(\'registerPassword\').value = \'\';
-        document.getElementById(\'registerName\').value = \'\';
+        document.getElementById('registerEmail').value = '';
+        document.getElementById('registerPassword').value = '';
+        document.getElementById('registerName').value = '';
 
       } catch (error) {
-        console.error(\'Erro detalhado no cadastro:\', error);
-        console.error(\'Código do erro:\', error.code);
-        console.error(\'Mensagem do erro:\', error.message);
+        console.error('Erro detalhado no cadastro:', error);
+        console.error('Código do erro:', error.code);
+        console.error('Mensagem do erro:', error.message);
         
-        let errorMessage = \'Erro no cadastro: \';
+        let errorMessage = 'Erro no cadastro: ';
         
         switch(error.code) {
-          case \'auth/email-already-in-use\':
-            errorMessage += \'Este email já está em uso.\';
+          case 'auth/email-already-in-use':
+            errorMessage += 'Este email já está em uso.';
             break;
-          case \'auth/invalid-email\':
-            errorMessage += \'Email inválido.\';
+          case 'auth/invalid-email':
+            errorMessage += 'Email inválido.';
             break;
-          case \'auth/weak-password\':
-            errorMessage += \'Senha muito fraca.\';
+          case 'auth/weak-password':
+            errorMessage += 'Senha muito fraca.';
             break;
           default:
             errorMessage += error.message;
         }
         
         messageDiv.textContent = errorMessage;
-        messageDiv.style.color = \'red\';
+        messageDiv.style.color = 'red';
       }
     }
 
@@ -638,35 +638,35 @@
       try {
         await window.firebaseAuthMethods.signOut(window.firebaseAuth);
       } catch (error) {
-        console.error(\'Erro ao fazer logout:\', error);
+        console.error('Erro ao fazer logout:', error);
       }
     }
 
     function toggleAdminPanel() {
-      const panel = document.getElementById(\'adminPanel\');
-      panel.classList.toggle(\'hidden\');
+      const panel = document.getElementById('adminPanel');
+      panel.classList.toggle('hidden');
     }
 
     async function loadUsers() {
       if (!isAdmin) {
-        alert(\'Acesso negado. Apenas administradores podem ver esta lista.\');
+        alert('Acesso negado. Apenas administradores podem ver esta lista.');
         return;
       }
 
       try {
-        console.log(\'Carregando usuários...\');
-        const usersCollection = window.firebaseDbMethods.collection(window.firebaseDb, \'users\');
+        console.log('Carregando usuários...');
+        const usersCollection = window.firebaseDbMethods.collection(window.firebaseDb, 'users');
         const snapshot = await window.firebaseDbMethods.getDocs(usersCollection);
         
-        console.log(\'Snapshot obtido:\', snapshot);
-        console.log(\'Número de documentos:\', snapshot.size);
+        console.log('Snapshot obtido:', snapshot);
+        console.log('Número de documentos:', snapshot.size);
         
-        const tbody = document.getElementById(\'usersTableBody\');
-        tbody.innerHTML = \'\';
+        const tbody = document.getElementById('usersTableBody');
+        tbody.innerHTML = '';
 
         if (snapshot.empty) {
-          tbody.innerHTML = \'<tr><td colspan="4" style="text-align: center;">Nenhum usuário encontrado</td></tr>\';
-          console.log(\'Nenhum usuário encontrado no Firestore\');
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Nenhum usuário encontrado</td></tr>';
+          console.log('Nenhum usuário encontrado no Firestore');
           return;
         }
 
@@ -678,21 +678,21 @@
           
           const row = tbody.insertRow();
           
-          row.insertCell(0).textContent = userData.email || \'\';
-          row.insertCell(1).textContent = userData.name || \'\';
-          row.insertCell(2).textContent = userData.role || \'user\';
+          row.insertCell(0).textContent = userData.email || '';
+          row.insertCell(1).textContent = userData.name || '';
+          row.insertCell(2).textContent = userData.role || 'user';
           
           // Tratar data de criação
-          let dateText = \'\';
+          let dateText = '';
           if (userData.createdAt) {
             try {
               if (userData.createdAt.toDate) {
-                dateText = userData.createdAt.toDate().toLocaleDateString(\'pt-BR\');
+                dateText = userData.createdAt.toDate().toLocaleDateString('pt-BR');
               } else {
-                dateText = new Date(userData.createdAt).toLocaleDateString(\'pt-BR\');
+                dateText = new Date(userData.createdAt).toLocaleDateString('pt-BR');
               }
             } catch (e) {
-              dateText = \'Data inválida\';
+              dateText = 'Data inválida';
             }
           }
           row.insertCell(3).textContent = dateText;
@@ -701,13 +701,13 @@
         console.log(`Total de usuários carregados: ${userCount}`);
         
       } catch (error) {
-        console.error(\'Erro detalhado ao carregar usuários:\', error);
-        alert(\'Erro ao carregar usuários: \' + error.message);
+        console.error('Erro detalhado ao carregar usuários:', error);
+        alert('Erro ao carregar usuários: ' + error.message);
       }
     }
 
     function exportUsersToExcel() {
-      const table = document.getElementById(\'usersTable\');
+      const table = document.getElementById('usersTable');
       const rows = Array.from(table.rows);
       
       const data = rows.map(row => {
@@ -729,18 +729,18 @@
         if (isAdmin) {
           // Admin vê todos os registros
           q = window.firebaseDbMethods.query(
-            window.firebaseDbMethods.collection(window.firebaseDb, \'mileageRecords\'),
-            window.firebaseDbMethods.orderBy(\'timestamp\', \'desc\')
+            window.firebaseDbMethods.collection(window.firebaseDb, 'mileageRecords'),
+            window.firebaseDbMethods.orderBy('timestamp', 'desc')
           );
-          console.log(\'Admin: carregando TODOS os registros de quilometragem...\');
+          console.log('Admin: carregando TODOS os registros de quilometragem...');
         } else {
           // Usuário comum vê apenas seus próprios registros
           q = window.firebaseDbMethods.query(
-            window.firebaseDbMethods.collection(window.firebaseDb, \'mileageRecords\'),
-            window.firebaseDbMethods.where(\'userId\', \'==\', currentUser.uid),
-            window.firebaseDbMethods.orderBy(\'timestamp\', \'desc\')
+            window.firebaseDbMethods.collection(window.firebaseDb, 'mileageRecords'),
+            window.firebaseDbMethods.where('userId', '==', currentUser.uid),
+            window.firebaseDbMethods.orderBy('timestamp', 'desc')
           );
-          console.log(\'Usuário comum: carregando apenas registros próprios...\');
+          console.log('Usuário comum: carregando apenas registros próprios...');
         }
 
         const querySnapshot = await window.firebaseDbMethods.getDocs(q);
@@ -749,12 +749,12 @@
           allMileageRecords.push({ id: doc.id, ...doc.data() });
         });
         registros = [...allMileageRecords]; // Atualiza a variável global de registros
-        console.log(`Registros de quilometragem carregados do Firestore (${isAdmin ? \'ADMIN\' : \'USER\'}):`, registros.length, \'registros\');
+        console.log(`Registros de quilometragem carregados do Firestore (${isAdmin ? 'ADMIN' : 'USER'}):`, registros.length, 'registros');
         
         // Se houver dados no localStorage, migrar para o Firestore e limpar localStorage
         const localRegistros = JSON.parse(localStorage.getItem("registros")) || [];
         if (localRegistros.length > 0) {
-          console.log(\'Migrando registros do localStorage para Firestore...\');
+          console.log('Migrando registros do localStorage para Firestore...');
           for (const rec of localRegistros) {
             // Verifica se o registro já existe no Firestore para evitar duplicatas
             const exists = allMileageRecords.some(fr => 
@@ -763,7 +763,7 @@
               fr.kmInicial === rec.kmInicial
             );
             if (!exists) {
-              const docRef = window.firebaseDbMethods.doc(window.firebaseDbMethods.collection(window.firebaseDb, \'mileageRecords\'));
+              const docRef = window.firebaseDbMethods.doc(window.firebaseDbMethods.collection(window.firebaseDb, 'mileageRecords'));
               await window.firebaseDbMethods.setDoc(docRef, {
                 ...rec,
                 userId: currentUser.uid,
@@ -773,7 +773,7 @@
             }
           }
           localStorage.removeItem("registros");
-          console.log(\'Registros do localStorage migrados e localStorage limpo.\');
+          console.log('Registros do localStorage migrados e localStorage limpo.');
           // Recarrega os registros do Firestore após a migração
           await loadMileageRecords(); 
           return; // Sai da função para evitar executar o resto duas vezes
@@ -785,8 +785,8 @@
         atualizarDashboard();
 
       } catch (error) {
-        console.error(\'Erro ao carregar registros de quilometragem do Firestore:\', error);
-        alert(\'Erro ao carregar registros: \' + error.message);
+        console.error('Erro ao carregar registros de quilometragem do Firestore:', error);
+        alert('Erro ao carregar registros: ' + error.message);
       }
     }
 
@@ -795,12 +795,12 @@
         return;
       }
       try {
-        await window.firebaseDbMethods.deleteDoc(window.firebaseDbMethods.doc(window.firebaseDb, \'mileageRecords\', recordId));
-        alert(\'Registro apagado com sucesso!\');
+        await window.firebaseDbMethods.deleteDoc(window.firebaseDbMethods.doc(window.firebaseDb, 'mileageRecords', recordId));
+        alert('Registro apagado com sucesso!');
         loadMileageRecords(); // Recarrega os registros após apagar
       } catch (error) {
-        console.error(\'Erro ao apagar registro do Firestore:\', error);
-        alert(\'Erro ao apagar registro: \' + error.message);
+        console.error('Erro ao apagar registro do Firestore:', error);
+        alert('Erro ao apagar registro: ' + error.message);
       }
     }
 
@@ -813,13 +813,13 @@
         if (isAdmin) {
           // Admin pode apagar todos os registros
           q = window.firebaseDbMethods.query(
-            window.firebaseDbMethods.collection(window.firebaseDb, \'mileageRecords\')
+            window.firebaseDbMethods.collection(window.firebaseDb, 'mileageRecords')
           );
         } else {
           // Usuário comum pode apagar apenas seus próprios registros
           q = window.firebaseDbMethods.query(
-            window.firebaseDbMethods.collection(window.firebaseDb, \'mileageRecords\'),
-            window.firebaseDbMethods.where(\'userId\', \'==\', currentUser.uid)
+            window.firebaseDbMethods.collection(window.firebaseDb, 'mileageRecords'),
+            window.firebaseDbMethods.where('userId', '==', currentUser.uid)
           );
         }
         const querySnapshot = await window.firebaseDbMethods.getDocs(q);
@@ -828,11 +828,11 @@
           batch.delete(doc.ref);
         });
         await batch.commit();
-        alert(\'Todos os registros apagados com sucesso!\');
+        alert('Todos os registros apagados com sucesso!');
         loadMileageRecords(); // Recarrega os registros após apagar
       } catch (error) {
-        console.error(\'Erro ao apagar todos os registros do Firestore:\', error);
-        alert(\'Erro ao apagar todos os registros: \' + error.message);
+        console.error('Erro ao apagar todos os registros do Firestore:', error);
+        alert('Erro ao apagar todos os registros: ' + error.message);
       }
     }
 
@@ -901,350 +901,380 @@
       const fotoFinal = document.getElementById("fotoFinal").files[0];
 
       // Remover classes de erro anteriores
-      document.querySelectorAll(\'.required\').forEach(el => el.classList.remove(\'required\'));
+      document.querySelectorAll('.required').forEach(el => el.classList.remove('required'));
 
       let erros = [];
 
       if (!placa) {
-        document.getElementById("placaVeiculo").classList.add(\'required\');
+        document.getElementById("placaVeiculo").classList.add('required');
         erros.push("Placa do veículo é obrigatória");
       }
 
       if (!kmInicial) {
-        document.getElementById("kmInicial").classList.add(\'required\');
+        document.getElementById("kmInicial").classList.add('required');
         erros.push("Quilometragem inicial é obrigatória");
       }
 
       if (!kmFinal) {
-        document.getElementById("kmFinal").classList.add(\'required\');
+        document.getElementById("kmFinal").classList.add('required');
         erros.push("Quilometragem final é obrigatória");
       }
 
       if (!fotoInicial) {
-        document.getElementById("fotoInicial").classList.add(\'required\');
+        document.getElementById("fotoInicial").classList.add('required');
         erros.push("Foto inicial é obrigatória");
       }
 
       if (!fotoFinal) {
-        document.getElementById("fotoFinal").classList.add(\'required\');
+        document.getElementById("fotoFinal").classList.add('required');
         erros.push("Foto final é obrigatória");
       }
 
-      if (kmInicial && kmFinal && parseFloat(kmFinal) <= parseFloat(kmInicial)) {
-        document.getElementById("kmFinal").classList.add(\'required\');
-        erros.push("A quilometragem final deve ser maior que a inicial");
-      }
-
       if (erros.length > 0) {
-        alert("Por favor, corrija os seguintes erros:\n\n" + erros.join("\n"));
+        alert('Por favor, preencha/selecione os campos obrigatórios:\n' + erros.join('\n'));
         return false;
       }
-
       return true;
     }
 
-    // Atualizar lista de placas no filtro
-    function atualizarFiltroPlacas() {
-      const filtroPlaca = document.getElementById("filtroPlaca");
-      const placasUnicas = [...new Set(registros.map(r => r.placa))].sort();
-      
-      // Limpar opções existentes (exceto "Todas as placas")
-      filtroPlaca.innerHTML = \'<option value="todas">Todas as placas</option>\';
-      
-      // Adicionar placas únicas
-      placasUnicas.forEach(placa => {
-        const option = document.createElement("option");
-        option.value = placa;
-        option.textContent = placa;
-        filtroPlaca.appendChild(option);
+    async function salvarRegistro() {
+      if (!currentUser) {
+        alert('Você precisa estar logado para salvar registros.');
+        return;
+      }
+
+      if (!validarCampos()) {
+        return;
+      }
+
+      const placa = document.getElementById("placaVeiculo").value;
+      const dataHora = document.getElementById("dataHora").value;
+      const kmInicial = parseFloat(document.getElementById("kmInicial").value);
+      const kmFinal = parseFloat(document.getElementById("kmFinal").value);
+      const fotoInicialFile = document.getElementById("fotoInicial").files[0];
+      const fotoFinalFile = document.getElementById("fotoFinal").files[0];
+
+      if (kmFinal <= kmInicial) {
+        alert("A quilometragem final deve ser maior que a inicial.");
+        return;
+      }
+
+      // Compressão das imagens
+      compressImage(fotoInicialFile, async (fotoInicialBase64) => {
+        compressImage(fotoFinalFile, async (fotoFinalBase64) => {
+          const novoRegistro = {
+            placa,
+            dataHora,
+            kmInicial,
+            kmFinal,
+            kmPercorrido: kmFinal - kmInicial,
+            fotoInicial: fotoInicialBase64,
+            fotoFinal: fotoFinalBase64,
+            userId: currentUser.uid, // Associar ao usuário logado
+            userEmail: currentUser.email, // Armazenar email para fácil visualização
+            timestamp: window.firebaseDbMethods.serverTimestamp() // Timestamp do servidor
+          };
+
+          try {
+            const docRef = window.firebaseDbMethods.doc(window.firebaseDbMethods.collection(window.firebaseDb, 'mileageRecords'));
+            await window.firebaseDbMethods.setDoc(docRef, novoRegistro);
+            alert("Registro salvo com sucesso no Firestore!");
+            
+            // Limpar formulário
+            document.getElementById("placaVeiculo").value = "";
+            document.getElementById("kmInicial").value = "";
+            document.getElementById("kmFinal").value = "";
+            document.getElementById("fotoInicial").value = "";
+            document.getElementById("fotoFinal").value = "";
+            document.getElementById("previewInicial").src = "";
+            document.getElementById("previewFinal").src = "";
+
+            loadMileageRecords(); // Recarregar registros após salvar
+
+          } catch (error) {
+            console.error("Erro ao salvar registro no Firestore:", error);
+            alert("Erro ao salvar registro: " + error.message);
+          }
+        });
       });
     }
 
-    // Atualizar métricas
-    function atualizarMetricas(dados) {
-      const totalKm = dados.reduce((sum, r) => sum + r.kmPercorridos, 0);
-      const mediaKm = dados.length > 0 ? totalKm / dados.length : 0;
-      const totalViagens = dados.length;
-      const maiorViagem = dados.length > 0 ? Math.max(...dados.map(r => r.kmPercorridos)) : 0;
-
-      document.getElementById("totalKm").textContent = totalKm.toFixed(1);
-      document.getElementById("mediaKm").textContent = mediaKm.toFixed(1);
-      document.getElementById("totalViagens").textContent = totalViagens;
-      document.getElementById("maiorViagem").textContent = maiorViagem.toFixed(1);
-    }
-
-    // Previews
-    document.getElementById("fotoInicial").addEventListener(\'change\', e => {
-      if (e.target.files[0]) {
-        compressImage(e.target.files[0], (dataUrl) => {
-          document.getElementById("previewInicial").src = dataUrl;
-          document.getElementById("previewInicial").dataset.img = dataUrl;
-          e.target.classList.remove(\'required\');
-        });
+    // Função para converter data brasileira para objeto Date
+    function parseDataBrasileira(dataString) {
+      const partes = dataString.split('/');
+      if (partes.length === 3) {
+        const dia = parseInt(partes[0], 10);
+        const mes = parseInt(partes[1], 10) - 1; // Mês é 0-indexado
+        const ano = parseInt(partes[2], 10);
+        return new Date(ano, mes, dia);
       }
-    });
-    document.getElementById("fotoFinal").addEventListener(\'change\', e => {
-      if (e.target.files[0]) {
-        compressImage(e.target.files[0], (dataUrl) => {
-          document.getElementById("previewFinal").src = dataUrl;
-          document.getElementById("previewFinal").dataset.img = dataUrl;
-          e.target.classList.remove(\'required\');
-        });
-      }
-    });
-
-    // Remover classe de erro ao digitar
-    document.getElementById("placaVeiculo").addEventListener(\'input\', e => {
-      e.target.classList.remove(\'required\');
-      // Formatar placa automaticamente
-      let valor = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, \'\');
-      if (valor.length > 3) {
-        valor = valor.substring(0, 3) + \'-\' + valor.substring(3, 7);
-      }
-      e.target.value = valor;
-    });
-
-    document.getElementById("kmInicial").addEventListener(\'input\', e => {
-      e.target.classList.remove(\'required\');
-    });
-
-    document.getElementById("kmFinal").addEventListener(\'input\', e => {
-      e.target.classList.remove(\'required\');
-    });
-
-    // Filtros de período
-    document.getElementById("filtroPeríodo").addEventListener(\'change\', function() {
-      const valor = this.value;
-      const dataInicio = document.getElementById("dataInicio");
-      const dataFim = document.getElementById("dataFim");
-      
-      if (valor === "personalizado") {
-        dataInicio.style.display = "block";
-        dataFim.style.display = "block";
-      } else {
-        dataInicio.style.display = "none";
-        dataFim.style.display = "none";
-      }
-    });
-
-    // Função auxiliar para converter data brasileira para objeto Date
-    function parseDataBrasileira(dataStr) {
-      if (!dataStr) return null;
-      
-      // Extrair apenas a parte da data (antes do espaço, se houver)
-      const datePart = dataStr.split(\' \')[0];
-      
-      // Verificar se está no formato dd/mm/yyyy
-      const parts = datePart.split(\'/\');
-      if (parts.length === 3) {
-        const day = parseInt(parts[0], 10);
-        const month = parseInt(parts[1], 10) - 1; // Mês é 0-indexado no JavaScript
-        const year = parseInt(parts[2], 10);
-        return new Date(year, month, day);
-      }
-      
       return null;
     }
 
     function aplicarFiltro() {
-      const filtro = document.getElementById("filtroPeríodo").value;
-      const placaFiltro = document.getElementById("filtroPlaca").value;
-      const hoje = new Date();
-      
-      // Começa com todos os registros carregados do Firestore
-      let registrosParaFiltrar = [...registros];
+      const filtroPeriodo = document.getElementById("filtroPeríodo").value;
+      const filtroPlaca = document.getElementById("filtroPlaca").value;
+      const dataInicioInput = document.getElementById("dataInicio");
+      const dataFimInput = document.getElementById("dataFim");
 
-      // Primeiro filtrar por período
-      let registrosFiltradosPorPeriodo = [];
-      
-      switch(filtro) {
+      let dataInicio = null;
+      let dataFim = null;
+
+      // Lógica para o filtro de período
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0); // Zera hora para comparação
+
+      switch (filtroPeriodo) {
         case "hoje":
-          const hojeFmt = hoje.toLocaleDateString("pt-BR");
-          registrosFiltradosPorPeriodo = registrosParaFiltrar.filter(r => {
-            const recordDate = parseDataBrasileira(r.dataHora);
-            return recordDate && recordDate.toLocaleDateString("pt-BR") === hojeFmt;
-          });
+          dataInicio = new Date(hoje);
+          dataFim = new Date(hoje);
+          dataFim.setDate(dataFim.getDate() + 1); // Até o final do dia de hoje
           break;
         case "semana":
-          const inicioSemana = new Date(hoje);
-          inicioSemana.setDate(hoje.getDate() - hoje.getDay());
-          inicioSemana.setHours(0,0,0,0);
-          registrosFiltradosPorPeriodo = registrosParaFiltrar.filter(r => {
-            const recordDate = parseDataBrasileira(r.dataHora);
-            return recordDate && recordDate >= inicioSemana;
-          });
+          dataInicio = new Date(hoje);
+          dataInicio.setDate(hoje.getDate() - hoje.getDay()); // Início da semana (domingo)
+          dataFim = new Date(dataInicio);
+          dataFim.setDate(dataFim.getDate() + 7); // Fim da semana (próximo domingo)
           break;
         case "mes":
-          const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-          registrosFiltradosPorPeriodo = registrosParaFiltrar.filter(r => {
-            const recordDate = parseDataBrasileira(r.dataHora);
-            return recordDate && recordDate >= inicioMes;
-          });
+          dataInicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+          dataFim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1); // Início do próximo mês
           break;
         case "personalizado":
-          const dataInicioStr = document.getElementById("dataInicio").value;
-          const dataFimStr = document.getElementById("dataFim").value;
-          if (dataInicioStr && dataFimStr) {
-            const dataInicio = new Date(dataInicioStr + \'T00:00:00\');
-            const dataFim = new Date(dataFimStr + \'T23:59:59\');
-            registrosFiltradosPorPeriodo = registrosParaFiltrar.filter(r => {
-              const recordDate = parseDataBrasileira(r.dataHora);
-              return recordDate && recordDate >= dataInicio && recordDate <= dataFim;
-            });
+          dataInicioInput.style.display = "inline-block";
+          dataFimInput.style.display = "inline-block";
+          
+          if (dataInicioInput.value && dataFimInput.value) {
+            dataInicio = new Date(dataInicioInput.value + 'T00:00:00'); // Garante fuso horário
+            dataFim = new Date(dataFimInput.value + 'T23:59:59'); // Garante fuso horário
           } else {
-            registrosFiltradosPorPeriodo = registrosParaFiltrar; // Se datas personalizadas não forem preenchidas, não filtra por período
+            alert('Por favor, selecione as datas de início e fim para o período personalizado.');
+            registrosFiltrados = [];
+            renderizarRelatorios(registrosFiltrados);
+            atualizarMetricas(registrosFiltrados);
+            atualizarDashboard();
+            return;
           }
           break;
+        case "todos":
         default:
-          registrosFiltradosPorPeriodo = registrosParaFiltrar;
+          dataInicioInput.style.display = "none";
+          dataFimInput.style.display = "none";
+          break;
       }
-      
-      // Depois filtrar por placa
-      if (placaFiltro !== "todas") {
-        registrosFiltrados = registrosFiltradosPorPeriodo.filter(r => r.placa === placaFiltro);
-      } else {
-        registrosFiltrados = registrosFiltradosPorPeriodo;
-      }
-      
-      console.log(`Filtro aplicado: ${filtro}, Placa: ${placaFiltro}, Registros encontrados: ${registrosFiltrados.length}`);
-      
-      renderizarRelatorios();
-      atualizarDashboard();
+
+      registrosFiltrados = registros.filter(registro => {
+        let passaNoFiltroData = true;
+        let passaNoFiltroPlaca = true;
+
+        // Filtro por data
+        if (filtroPeriodo !== "todos") {
+          const registroDate = parseDataBrasileira(registro.dataHora.split(' ')[0]); // Pega só a data do registro
+          if (registroDate) {
+            passaNoFiltroData = registroDate >= dataInicio && registroDate <= dataFim;
+          } else {
+            passaNoFiltroData = false; // Se a data do registro for inválida, não passa
+          }
+        }
+
+        // Filtro por placa
+        if (filtroPlaca !== "todas") {
+          passaNoFiltroPlaca = registro.placa === filtroPlaca;
+        }
+
+        return passaNoFiltroData && passaNoFiltroPlaca;
+      });
+
+      renderizarRelatorios(registrosFiltrados);
       atualizarMetricas(registrosFiltrados);
+      atualizarDashboard();
     }
 
-    // Renderizar relatórios
-    function renderizarRelatorios() {
-      relatoriosDiv.innerHTML = "";
-      if (registrosFiltrados.length === 0) {
-        relatoriosDiv.innerHTML = \'<p style="text-align: center;">Nenhum registro encontrado para os filtros aplicados.</p>\';
-        return;
-      }
-      registrosFiltrados.forEach((r) => {
-        const div = document.createElement("div");
-        div.className = "relatorio";
-        div.innerHTML = `
-          <div>
-            <b>${r.placa} - ${r.dataHora}</b><br>
-            Km Inicial: ${r.kmInicial} | Km Final: ${r.kmFinal} | Percorridos: <strong>${r.kmPercorridos.toFixed(1)} km</strong><br>
-            <small>Usuário: ${r.userEmail || \'N/A\'}</small><br>
-            <img src="${r.fotoInicial}" alt="Inicial" class="foto-relatorio">
-            <img src="${r.fotoFinal}" alt="Final" class="foto-relatorio">
-          </div>
-          <button onclick="deleteMileageRecord(\'${r.id}\')" class="btn-small btn-danger">🗑️</button>
-        `;
-        relatoriosDiv.appendChild(div);
+    function atualizarFiltroPlacas() {
+      const filtroPlacaSelect = document.getElementById("filtroPlaca");
+      filtroPlacaSelect.innerHTML = '<option value="todas">Todas as placas</option>';
+      const placasUnicas = [...new Set(registros.map(registro => registro.placa))];
+      placasUnicas.forEach(placa => {
+        const option = document.createElement("option");
+        option.value = placa;
+        option.textContent = placa;
+        filtroPlacaSelect.appendChild(option);
       });
     }
 
-    // Funções de apagar adaptadas para Firestore
-    function apagarRegistro(recordId) {
-      deleteMileageRecord(recordId);
+    function atualizarMetricas(registrosParaMetricas) {
+      const totalKm = registrosParaMetricas.reduce((sum, reg) => sum + reg.kmPercorrido, 0);
+      const totalViagens = registrosParaMetricas.length;
+      const mediaKm = totalViagens > 0 ? (totalKm / totalViagens).toFixed(2) : 0;
+      const maiorViagem = registrosParaMetricas.reduce((max, reg) => Math.max(max, reg.kmPercorrido), 0);
+
+      document.getElementById("totalKm").textContent = totalKm.toFixed(2);
+      document.getElementById("mediaKm").textContent = mediaKm;
+      document.getElementById("totalViagens").textContent = totalViagens;
+      document.getElementById("maiorViagem").textContent = maiorViagem.toFixed(2);
     }
 
-    function apagarTodos() {
-      deleteAllMileageRecords();
+    function renderizarRelatorios(registrosParaRenderizar) {
+      relatoriosDiv.innerHTML = "";
+      if (registrosParaRenderizar.length === 0) {
+        relatoriosDiv.innerHTML = "<p style='text-align: center;'>Nenhum registro encontrado para os filtros aplicados.</p>";
+        return;
+      }
+
+      registrosParaRenderizar.forEach(registro => {
+        const relatorioDiv = document.createElement("div");
+        relatorioDiv.classList.add("card", "relatorio");
+        relatorioDiv.innerHTML = `
+          <div>
+            <strong>Placa:</strong> ${registro.placa}<br>
+            <strong>Data/Hora:</strong> ${registro.dataHora}<br>
+            <strong>Km Inicial:</strong> ${registro.kmInicial}<br>
+            <strong>Km Final:</strong> ${registro.kmFinal}<br>
+            <strong>Km Percorrido:</strong> ${registro.kmPercorrido.toFixed(2)}<br>
+            ${isAdmin ? `<strong>Usuário:</strong> ${registro.userEmail}<br>` : ''} <!-- Exibe email do usuário se for admin -->
+            <button onclick="deleteMileageRecord('${registro.id}')" class="btn-small btn-danger">Apagar</button>
+          </div>
+          <div>
+            <img src="${registro.fotoInicial}" alt="Foto Inicial" class="foto-relatorio">
+            <img src="${registro.fotoFinal}" alt="Foto Final" class="foto-relatorio">
+          </div>
+        `;
+        relatoriosDiv.appendChild(relatorioDiv);
+      });
     }
 
-    // Exportar XLSX
-    function exportarXLSX() {
-      const dadosExport = registrosFiltrados.map(r => ({
-        "Placa": r.placa,
-        "Data/Hora": r.dataHora,
-        "Km Inicial": r.kmInicial,
-        "Km Final": r.kmFinal,
-        "Km Percorridos": r.kmPercorridos,
-        "Usuário": r.userEmail || \'N/A\'
-      }));
-      
-      const ws = XLSX.utils.json_to_sheet(dadosExport);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Relatórios");
-      XLSX.writeFile(wb, "relatorios_quilometragem.xlsx");
-    }
+    let graficoChart;
 
-    // Dashboard com gráfico de linhas
-    let chart;
     function atualizarDashboard() {
-      const ctx = document.getElementById("grafico").getContext("2d");
-      const labels = registrosFiltrados.map(r => r.dataHora ? r.dataHora.split(\' \')[0] : \'\');
-      const kms = registrosFiltrados.map(r => r.kmPercorridos);
+      const ctx = document.getElementById('grafico').getContext('2d');
+      
+      // Agrupar dados por placa para o gráfico
+      const dadosPorPlaca = registrosFiltrados.reduce((acc, registro) => {
+        if (!acc[registro.placa]) {
+          acc[registro.placa] = 0;
+        }
+        acc[registro.placa] += registro.kmPercorrido;
+        return acc;
+      }, {});
 
-      if (chart) chart.destroy();
-      chart = new Chart(ctx, {
-        type: "line",
+      const labels = Object.keys(dadosPorPlaca);
+      const data = Object.values(dadosPorPlaca);
+
+      if (graficoChart) {
+        graficoChart.destroy();
+      }
+
+      graficoChart = new Chart(ctx, {
+        type: 'bar',
         data: {
-          labels,
+          labels: labels,
           datasets: [{
-            label: "Km Percorridos",
-            data: kms,
-            backgroundColor: "rgba(0,123,255,0.2)",
-            borderColor: "rgba(0,123,255,1)",
-            borderWidth: 2,
-            fill: true,
-            tension: 0.4,
-            pointBackgroundColor: "rgba(0,123,255,1)",
-            pointBorderColor: "#fff",
-            pointBorderWidth: 2,
-            pointRadius: 5
+            label: 'Km Percorridos',
+            data: data,
+            backgroundColor: 'rgba(0, 123, 255, 0.5)',
+            borderColor: 'rgba(0, 123, 255, 1)',
+            borderWidth: 1
           }]
         },
-        options: { 
-          responsive: true, 
+        options: {
+          responsive: true,
           maintainAspectRatio: false,
           scales: {
             y: {
               beginAtZero: true,
               title: {
                 display: true,
-                text: \'Quilômetros\'
+                text: 'Quilômetros'
               }
-            },
-            x: {
-              title: {
-                display: true,
-                text: \'Data\'
-              }
-            }
-          },
-          plugins: {
-            legend: {
-              display: true,
-              position: \'top\'
             }
           }
         }
       });
     }
 
-    // Alternância de tema
-    const themeToggle = document.getElementById("themeToggle");
-    themeToggle.addEventListener(\'click\', () => {
-      document.body.dataset.theme =
-        document.body.dataset.theme === "dark" ? "light" : "dark";
-      themeToggle.textContent = document.body.dataset.theme === "dark" ? "☀️" : "🌙";
-      localStorage.setItem("theme", document.body.dataset.theme);
+    function exportarXLSX() {
+      const dataToExport = registrosFiltrados.map(registro => ({
+        Placa: registro.placa,
+        'Data/Hora': registro.dataHora,
+        'Km Inicial': registro.kmInicial,
+        'Km Final': registro.kmFinal,
+        'Km Percorrido': registro.kmPercorrido,
+        'Usuário Email': registro.userEmail || 'N/A' // Inclui o email do usuário
+      }));
+
+      if (dataToExport.length === 0) {
+        alert('Nenhum dado para exportar.');
+        return;
+      }
+
+      const ws = XLSX.utils.json_to_sheet(dataToExport);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Relatório de Quilometragem");
+      XLSX.writeFile(wb, "relatorio_quilometragem.xlsx");
+    }
+
+    // Previews de imagem
+    document.getElementById("fotoInicial").addEventListener("change", function() {
+      const file = this.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById("previewInicial").src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
     });
 
-    // Carregar tema salvo
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme) {
-      document.body.dataset.theme = savedTheme;
-      themeToggle.textContent = savedTheme === "dark" ? "☀️" : "🌙";
+    document.getElementById("fotoFinal").addEventListener("change", function() {
+      const file = this.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById("previewFinal").src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Lógica do tema
+    const themeToggle = document.getElementById('themeToggle');
+    const currentTheme = localStorage.getItem('theme');
+
+    if (currentTheme) {
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      if (currentTheme === 'dark') {
+        themeToggle.textContent = '☀️';
+      } else {
+        themeToggle.textContent = '🌙';
+      }
     }
 
-    // Registrar Service Worker
-    if (\'serviceWorker\' in navigator) {
-      window.addEventListener(\'load\', () => {
-        navigator.serviceWorker.register(\'service-worker.js\')
-          .then((registration) => {
-            console.log(\'SW registrado com sucesso: \', registration);
-          })
-          .catch((registrationError) => {
-            console.log(\'SW falhou ao registrar: \', registrationError);
-          });
-      });
-    }
+    themeToggle.addEventListener('click', () => {
+      let theme = document.documentElement.getAttribute('data-theme');
+      if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        localStorage.setItem('theme', 'light');
+        themeToggle.textContent = '🌙';
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        localStorage.setItem('theme', 'dark');
+        themeToggle.textContent = '☀️';
+      }
+    });
+
+    // Esconder/mostrar inputs de data para filtro personalizado
+    document.getElementById("filtroPeríodo").addEventListener("change", function() {
+      const dataInicioInput = document.getElementById("dataInicio");
+      const dataFimInput = document.getElementById("dataFim");
+      if (this.value === "personalizado") {
+        dataInicioInput.style.display = "inline-block";
+        dataFimInput.style.display = "inline-block";
+      } else {
+        dataInicioInput.style.display = "none";
+        dataFimInput.style.display = "none";
+      }
+    });
+
   </script>
 </body>
 </html>
