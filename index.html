@@ -168,27 +168,32 @@
       min-width: 150px;
     }
 
-    /* Botão de tema fixo - CORRIGIDO */
+    /* CORREÇÃO 1: Botão de tema fixo - POSICIONAMENTO CORRIGIDO */
     .theme-toggle {
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      z-index: 9999;
-      background: transparent;
-      border: none;
-      padding: 8px;
+      position: fixed !important;
+      top: 5px !important;
+      right: 5px !important;
+      z-index: 99999 !important;
+      background: var(--card-bg) !important;
+      border: 2px solid var(--primary-color) !important;
+      padding: 8px !important;
       cursor: pointer;
       color: var(--primary-color);
-      font-size: 20px;
+      font-size: 18px;
       transition: all 0.3s;
-      width: auto !important;
-      min-width: auto !important;
-      border-radius: 50%;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      width: 40px !important;
+      height: 40px !important;
+      min-width: 40px !important;
+      border-radius: 50% !important;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
     }
     .theme-toggle:hover {
-      background: var(--primary-color);
-      color: white;
+      background: var(--primary-color) !important;
+      color: white !important;
+      transform: scale(1.1);
     }
 
     /* Campos obrigatórios */
@@ -277,11 +282,11 @@
         margin: 20px auto;
         padding: 15px;
       }
-      /* Ajustar botão de tema no mobile */
+      /* Ajustar botão de tema no mobile - CORREÇÃO APLICADA */
       .theme-toggle {
-        top: 5px;
-        right: 5px;
-        font-size: 18px;
+        top: 5px !important;
+        right: 5px !important;
+        font-size: 16px !important;
       }
     }
 
@@ -721,18 +726,19 @@
       XLSX.writeFile(wb, "usuarios_cadastrados.xlsx");
     }
 
+    // CORREÇÃO 2: Função para carregar registros do Firestore - CORRIGIDA
     async function loadMileageRecords() {
       if (!currentUser) return; // Não carrega se não houver usuário logado
 
       try {
         let q;
         if (isAdmin) {
-          // Admin vê todos os registros
+          // Admin vê todos os registros de todos os usuários
           q = window.firebaseDbMethods.query(
             window.firebaseDbMethods.collection(window.firebaseDb, 'mileageRecords'),
             window.firebaseDbMethods.orderBy('timestamp', 'desc')
           );
-          console.log('Admin: carregando TODOS os registros de quilometragem...');
+          console.log('🔥 ADMIN: Carregando TODOS os registros de TODOS os usuários...');
         } else {
           // Usuário comum vê apenas seus próprios registros
           q = window.firebaseDbMethods.query(
@@ -740,21 +746,34 @@
             window.firebaseDbMethods.where('userId', '==', currentUser.uid),
             window.firebaseDbMethods.orderBy('timestamp', 'desc')
           );
-          console.log('Usuário comum: carregando apenas registros próprios...');
+          console.log('👤 USUÁRIO: Carregando apenas registros próprios...');
         }
 
         const querySnapshot = await window.firebaseDbMethods.getDocs(q);
         allMileageRecords = []; // Limpa os registros anteriores
+        
         querySnapshot.forEach((doc) => {
-          allMileageRecords.push({ id: doc.id, ...doc.data() });
+          const data = doc.data();
+          allMileageRecords.push({ 
+            id: doc.id, 
+            ...data,
+            // Garantir que userEmail esteja presente para exibição
+            userEmail: data.userEmail || data.email || 'Email não disponível'
+          });
         });
+        
         registros = [...allMileageRecords]; // Atualiza a variável global de registros
-        console.log(`Registros de quilometragem carregados do Firestore (${isAdmin ? 'ADMIN' : 'USER'}):`, registros.length, 'registros');
+        console.log(`✅ Registros carregados do Firestore (${isAdmin ? 'ADMIN - TODOS' : 'USER - PRÓPRIOS'}):`, registros.length, 'registros');
+        
+        // Log detalhado dos registros para debug
+        if (isAdmin && registros.length > 0) {
+          console.log('📋 Primeiros 3 registros (admin):', registros.slice(0, 3));
+        }
         
         // Se houver dados no localStorage, migrar para o Firestore e limpar localStorage
         const localRegistros = JSON.parse(localStorage.getItem("registros")) || [];
         if (localRegistros.length > 0) {
-          console.log('Migrando registros do localStorage para Firestore...');
+          console.log('🔄 Migrando registros do localStorage para Firestore...');
           for (const rec of localRegistros) {
             // Verifica se o registro já existe no Firestore para evitar duplicatas
             const exists = allMileageRecords.some(fr => 
@@ -767,13 +786,13 @@
               await window.firebaseDbMethods.setDoc(docRef, {
                 ...rec,
                 userId: currentUser.uid,
-                userEmail: currentUser.email, // Adicionado para migração
+                userEmail: currentUser.email, // Importante para admin ver quem criou
                 timestamp: window.firebaseDbMethods.serverTimestamp()
               });
             }
           }
           localStorage.removeItem("registros");
-          console.log('Registros do localStorage migrados e localStorage limpo.');
+          console.log('✅ Registros do localStorage migrados e localStorage limpo.');
           // Recarrega os registros do Firestore após a migração
           await loadMileageRecords(); 
           return; // Sai da função para evitar executar o resto duas vezes
@@ -785,9 +804,72 @@
         atualizarDashboard();
 
       } catch (error) {
-        console.error('Erro ao carregar registros de quilometragem do Firestore:', error);
+        console.error('❌ Erro ao carregar registros de quilometragem do Firestore:', error);
         alert('Erro ao carregar registros: ' + error.message);
       }
+    }
+
+    async function salvarRegistro() {
+      if (!validarCampos()) {
+        return;
+      }
+
+      const placa = document.getElementById("placaVeiculo").value.trim().toUpperCase();
+      const dataHora = document.getElementById("dataHora").value;
+      const kmInicial = parseFloat(document.getElementById("kmInicial").value);
+      const kmFinal = parseFloat(document.getElementById("kmFinal").value);
+      const fotoInicial = document.getElementById("fotoInicial").files[0];
+      const fotoFinal = document.getElementById("fotoFinal").files[0];
+
+      if (kmFinal <= kmInicial) {
+        alert("A quilometragem final deve ser maior que a inicial!");
+        return;
+      }
+
+      const kmPercorrido = kmFinal - kmInicial;
+
+      // Comprimir imagens
+      compressImage(fotoInicial, async (fotoInicialComprimida) => {
+        compressImage(fotoFinal, async (fotoFinalComprimida) => {
+          const novoRegistro = {
+            placa: placa,
+            dataHora: dataHora,
+            kmInicial: kmInicial,
+            kmFinal: kmFinal,
+            kmPercorrido: kmPercorrido,
+            fotoInicial: fotoInicialComprimida,
+            fotoFinal: fotoFinalComprimida,
+            userId: currentUser.uid,
+            userEmail: currentUser.email, // Importante para admin ver quem criou
+            timestamp: window.firebaseDbMethods.serverTimestamp()
+          };
+
+          try {
+            // Salvar no Firestore
+            const docRef = window.firebaseDbMethods.doc(window.firebaseDbMethods.collection(window.firebaseDb, 'mileageRecords'));
+            await window.firebaseDbMethods.setDoc(docRef, novoRegistro);
+            
+            console.log('✅ Registro salvo no Firestore com sucesso!');
+            alert("Registro salvo com sucesso!");
+
+            // Limpar formulário
+            document.getElementById("placaVeiculo").value = "";
+            document.getElementById("kmInicial").value = "";
+            document.getElementById("kmFinal").value = "";
+            document.getElementById("fotoInicial").value = "";
+            document.getElementById("fotoFinal").value = "";
+            document.getElementById("previewInicial").src = "";
+            document.getElementById("previewFinal").src = "";
+
+            // Recarregar registros
+            await loadMileageRecords();
+
+          } catch (error) {
+            console.error('❌ Erro ao salvar registro no Firestore:', error);
+            alert('Erro ao salvar registro: ' + error.message);
+          }
+        });
+      });
     }
 
     async function deleteMileageRecord(recordId) {
@@ -931,86 +1013,46 @@
       }
 
       if (erros.length > 0) {
-        alert('Por favor, preencha/selecione os campos obrigatórios:\n' + erros.join('\n'));
+        alert("Por favor, preencha todos os campos obrigatórios:\n\n" + erros.join("\n"));
         return false;
       }
+
       return true;
     }
 
-    async function salvarRegistro() {
-      if (!currentUser) {
-        alert('Você precisa estar logado para salvar registros.');
-        return;
+    function apagarRegistro(index) {
+      if (confirm("Tem certeza que deseja apagar este registro?")) {
+        registros.splice(index, 1);
+        localStorage.setItem("registros", JSON.stringify(registros));
+        aplicarFiltro();
+        atualizarFiltroPlacas();
+        atualizarMetricas(registrosFiltrados);
+        atualizarDashboard();
+        alert("Registro apagado com sucesso!");
       }
-
-      if (!validarCampos()) {
-        return;
-      }
-
-      const placa = document.getElementById("placaVeiculo").value;
-      const dataHora = document.getElementById("dataHora").value;
-      const kmInicial = parseFloat(document.getElementById("kmInicial").value);
-      const kmFinal = parseFloat(document.getElementById("kmFinal").value);
-      const fotoInicialFile = document.getElementById("fotoInicial").files[0];
-      const fotoFinalFile = document.getElementById("fotoFinal").files[0];
-
-      if (kmFinal <= kmInicial) {
-        alert("A quilometragem final deve ser maior que a inicial.");
-        return;
-      }
-
-      // Compressão das imagens
-      compressImage(fotoInicialFile, async (fotoInicialBase64) => {
-        compressImage(fotoFinalFile, async (fotoFinalBase64) => {
-          const novoRegistro = {
-            placa,
-            dataHora,
-            kmInicial,
-            kmFinal,
-            kmPercorrido: kmFinal - kmInicial,
-            fotoInicial: fotoInicialBase64,
-            fotoFinal: fotoFinalBase64,
-            userId: currentUser.uid, // Associar ao usuário logado
-            userEmail: currentUser.email, // Armazenar email para fácil visualização
-            timestamp: window.firebaseDbMethods.serverTimestamp() // Timestamp do servidor
-          };
-
-          try {
-            const docRef = window.firebaseDbMethods.doc(window.firebaseDbMethods.collection(window.firebaseDb, 'mileageRecords'));
-            await window.firebaseDbMethods.setDoc(docRef, novoRegistro);
-            alert("Registro salvo com sucesso no Firestore!");
-            
-            // Limpar formulário
-            document.getElementById("placaVeiculo").value = "";
-            document.getElementById("kmInicial").value = "";
-            document.getElementById("kmFinal").value = "";
-            document.getElementById("fotoInicial").value = "";
-            document.getElementById("fotoFinal").value = "";
-            document.getElementById("previewInicial").src = "";
-            document.getElementById("previewFinal").src = "";
-
-            loadMileageRecords(); // Recarregar registros após salvar
-
-          } catch (error) {
-            console.error("Erro ao salvar registro no Firestore:", error);
-            alert("Erro ao salvar registro: " + error.message);
-          }
-        });
-      });
     }
 
-    // Função para converter data brasileira para objeto Date
+    function apagarTodos() {
+      deleteAllMileageRecords(); // Usar a função do Firestore
+    }
+
+    // CORREÇÃO 3: Função para converter data brasileira - CORRIGIDA
     function parseDataBrasileira(dataString) {
-      const partes = dataString.split('/');
-      if (partes.length === 3) {
-        const dia = parseInt(partes[0], 10);
-        const mes = parseInt(partes[1], 10) - 1; // Mês é 0-indexado
-        const ano = parseInt(partes[2], 10);
-        return new Date(ano, mes, dia);
+      // Verifica se é uma data no formato brasileiro (dd/mm/yyyy)
+      if (dataString && dataString.includes('/')) {
+        const partes = dataString.split('/');
+        if (partes.length === 3) {
+          const dia = parseInt(partes[0], 10);
+          const mes = parseInt(partes[1], 10) - 1; // Mês é 0-indexado
+          const ano = parseInt(partes[2], 10);
+          return new Date(ano, mes, dia);
+        }
       }
-      return null;
+      // Se não for formato brasileiro, tenta converter diretamente
+      return new Date(dataString);
     }
 
+    // CORREÇÃO 3: Função aplicarFiltro - CORRIGIDA
     function aplicarFiltro() {
       const filtroPeriodo = document.getElementById("filtroPeríodo").value;
       const filtroPlaca = document.getElementById("filtroPlaca").value;
@@ -1045,8 +1087,15 @@
           dataFimInput.style.display = "inline-block";
           
           if (dataInicioInput.value && dataFimInput.value) {
-            dataInicio = new Date(dataInicioInput.value + 'T00:00:00'); // Garante fuso horário
-            dataFim = new Date(dataFimInput.value + 'T23:59:59'); // Garante fuso horário
+            // CORREÇÃO: Criar datas corretamente para o filtro personalizado
+            const dataInicioStr = dataInicioInput.value; // formato yyyy-mm-dd
+            const dataFimStr = dataFimInput.value; // formato yyyy-mm-dd
+            
+            dataInicio = new Date(dataInicioStr + 'T00:00:00');
+            dataFim = new Date(dataFimStr + 'T23:59:59');
+            
+            console.log('🔍 Filtro personalizado - Data início:', dataInicio);
+            console.log('🔍 Filtro personalizado - Data fim:', dataFim);
           } else {
             alert('Por favor, selecione as datas de início e fim para o período personalizado.');
             registrosFiltrados = [];
@@ -1067,13 +1116,24 @@
         let passaNoFiltroData = true;
         let passaNoFiltroPlaca = true;
 
-        // Filtro por data
+        // CORREÇÃO: Filtro por data melhorado
         if (filtroPeriodo !== "todos") {
-          const registroDate = parseDataBrasileira(registro.dataHora.split(' ')[0]); // Pega só a data do registro
-          if (registroDate) {
-            passaNoFiltroData = registroDate >= dataInicio && registroDate <= dataFim;
+          let registroDate = parseDataBrasileira(registro.dataHora.split(' ')[0]); // Pega só a data do registro
+          
+          if (registroDate && !isNaN(registroDate.getTime())) {
+            // Zerar horas para comparação apenas de datas
+            registroDate.setHours(0, 0, 0, 0);
+            const dataInicioComparar = new Date(dataInicio);
+            const dataFimComparar = new Date(dataFim);
+            dataInicioComparar.setHours(0, 0, 0, 0);
+            dataFimComparar.setHours(23, 59, 59, 999);
+            
+            passaNoFiltroData = registroDate >= dataInicioComparar && registroDate <= dataFimComparar;
+            
+            console.log('🔍 Comparando registro:', registro.dataHora, 'Data do registro:', registroDate, 'Passa no filtro:', passaNoFiltroData);
           } else {
             passaNoFiltroData = false; // Se a data do registro for inválida, não passa
+            console.log('❌ Data inválida no registro:', registro.dataHora);
           }
         }
 
@@ -1085,6 +1145,8 @@
         return passaNoFiltroData && passaNoFiltroPlaca;
       });
 
+      console.log(`🔍 Filtro aplicado: ${registrosFiltrados.length} registros de ${registros.length} total`);
+      
       renderizarRelatorios(registrosFiltrados);
       atualizarMetricas(registrosFiltrados);
       atualizarDashboard();
@@ -1114,6 +1176,7 @@
       document.getElementById("maiorViagem").textContent = maiorViagem.toFixed(2);
     }
 
+    // CORREÇÃO 2: Função renderizarRelatorios - CORRIGIDA PARA ADMIN
     function renderizarRelatorios(registrosParaRenderizar) {
       relatoriosDiv.innerHTML = "";
       if (registrosParaRenderizar.length === 0) {
@@ -1121,24 +1184,42 @@
         return;
       }
 
-      registrosParaRenderizar.forEach(registro => {
+      console.log(`📋 Renderizando ${registrosParaRenderizar.length} registros. Admin: ${isAdmin}`);
+
+      registrosParaRenderizar.forEach((registro, index) => {
         const relatorioDiv = document.createElement("div");
         relatorioDiv.classList.add("card", "relatorio");
-        relatorioDiv.innerHTML = `
+        
+        // Construir HTML do registro
+        let registroHTML = `
           <div>
             <strong>Placa:</strong> ${registro.placa}<br>
             <strong>Data/Hora:</strong> ${registro.dataHora}<br>
             <strong>Km Inicial:</strong> ${registro.kmInicial}<br>
             <strong>Km Final:</strong> ${registro.kmFinal}<br>
-            <strong>Km Percorrido:</strong> ${registro.kmPercorrido.toFixed(2)}<br>
-            ${isAdmin ? `<strong>Usuário:</strong> ${registro.userEmail}<br>` : ''} <!-- Exibe email do usuário se for admin -->
-            <button onclick="deleteMileageRecord('${registro.id}')" class="btn-small btn-danger">Apagar</button>
+            <strong>Km Percorrido:</strong> ${registro.kmPercorrido.toFixed(2)}<br>`;
+        
+        // CORREÇÃO: Se for admin, mostrar o email do usuário que criou o registro
+        if (isAdmin && registro.userEmail) {
+          registroHTML += `<strong>🔥 Criado por:</strong> ${registro.userEmail}<br>`;
+        }
+        
+        // Adicionar botão de apagar (se o registro tem ID do Firestore)
+        if (registro.id) {
+          registroHTML += `<button onclick="deleteMileageRecord('${registro.id}')" class="btn-small btn-danger">Apagar</button>`;
+        } else {
+          registroHTML += `<button onclick="apagarRegistro(${index})" class="btn-small btn-danger">Apagar</button>`;
+        }
+        
+        registroHTML += `
           </div>
           <div>
             <img src="${registro.fotoInicial}" alt="Foto Inicial" class="foto-relatorio">
             <img src="${registro.fotoFinal}" alt="Foto Final" class="foto-relatorio">
           </div>
         `;
+        
+        relatorioDiv.innerHTML = registroHTML;
         relatoriosDiv.appendChild(relatorioDiv);
       });
     }
@@ -1274,6 +1355,19 @@
         dataFimInput.style.display = "none";
       }
     });
+
+    // Registrar Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js')
+          .then((registration) => {
+            console.log('SW registered: ', registration);
+          })
+          .catch((registrationError) => {
+            console.log('SW registration failed: ', registrationError);
+          });
+      });
+    }
 
   </script>
 </body>
