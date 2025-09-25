@@ -429,26 +429,58 @@
     <!-- Painel Administrativo -->
     <div id="adminPanel" class="card hidden">
       <h2>Painel Administrativo</h2>
-      <div style="text-align: center; margin-bottom: 15px;">
-        <button onclick="loadUsers()" class="btn-small btn-success">🔄 Atualizar Lista</button>
-        <button onclick="exportUsersToExcel()" class="btn-small btn-warning">📂 Exportar Usuários</button>
+      
+      <!-- Seção de Usuários -->
+      <div style="margin-bottom: 30px;">
+        <h3>👥 Usuários Cadastrados</h3>
+        <div style="text-align: center; margin-bottom: 15px;">
+          <button onclick="loadUsers()" class="btn-small btn-success">🔄 Atualizar Lista</button>
+          <button onclick="exportUsersToExcel()" class="btn-small btn-warning">📂 Exportar Usuários</button>
+        </div>
+        <div id="usersTableContainer">
+          <table class="admin-table" id="usersTable">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Nome</th>
+                <th>Função</th>
+                <th>Data de Cadastro</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr>
+                <td colspan="4" style="text-align: center;">Clique em "Atualizar Lista" para carregar os usuários</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-      <div id="usersTableContainer">
-        <table class="admin-table" id="usersTable">
-          <thead>
-            <tr>
-              <th>Email</th>
-              <th>Nome</th>
-              <th>Função</th>
-              <th>Data de Cadastro</th>
-            </tr>
-          </thead>
-          <tbody id="usersTableBody">
-            <tr>
-              <td colspan="4" style="text-align: center;">Clique em "Atualizar Lista" para carregar os usuários</td>
-            </tr>
-          </tbody>
-        </table>
+
+      <!-- Seção de Placas -->
+      <div>
+        <h3>🚗 Placas Cadastradas por Usuário</h3>
+        <div style="text-align: center; margin-bottom: 15px;">
+          <button onclick="loadPlatesByUser()" class="btn-small btn-success">🔄 Atualizar Placas</button>
+          <button onclick="exportPlatesToExcel()" class="btn-small btn-warning">📂 Exportar Placas</button>
+        </div>
+        <div id="platesTableContainer">
+          <table class="admin-table" id="platesTable">
+            <thead>
+              <tr>
+                <th>Placa</th>
+                <th>Usuário (Email)</th>
+                <th>Total de Registros</th>
+                <th>Primeiro Uso</th>
+                <th>Último Uso</th>
+              </tr>
+            </thead>
+            <tbody id="platesTableBody">
+              <tr>
+                <td colspan="5" style="text-align: center;">Clique em "Atualizar Placas" para carregar as placas</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -737,6 +769,119 @@
       XLSX.writeFile(wb, "usuarios_cadastrados.xlsx");
     }
 
+    // NOVA FUNCIONALIDADE: Carregar placas por usuário
+    async function loadPlatesByUser() {
+      if (!isAdmin) {
+        alert('Acesso negado. Apenas administradores podem ver esta lista.');
+        return;
+      }
+
+      try {
+        console.log('🚗 Carregando placas por usuário...');
+        
+        // Buscar todos os registros de quilometragem
+        const recordsCollection = window.firebaseDbMethods.collection(window.firebaseDb, 'mileageRecords');
+        const recordsSnapshot = await window.firebaseDbMethods.getDocs(recordsCollection);
+        
+        console.log('📊 Registros encontrados:', recordsSnapshot.size);
+        
+        // Agrupar por placa e usuário
+        const platesByUser = {};
+        
+        recordsSnapshot.forEach((doc) => {
+          const data = doc.data();
+          const placa = data.placa || 'Placa não informada';
+          const userEmail = data.userEmail || 'Email não informado';
+          const dataHora = data.dataHora || '';
+          
+          const key = `${placa}_${userEmail}`;
+          
+          if (!platesByUser[key]) {
+            platesByUser[key] = {
+              placa: placa,
+              userEmail: userEmail,
+              totalRegistros: 0,
+              primeiroUso: dataHora,
+              ultimoUso: dataHora,
+              datas: []
+            };
+          }
+          
+          platesByUser[key].totalRegistros++;
+          platesByUser[key].datas.push(dataHora);
+          
+          // Atualizar primeiro e último uso
+          if (dataHora && dataHora < platesByUser[key].primeiroUso) {
+            platesByUser[key].primeiroUso = dataHora;
+          }
+          if (dataHora && dataHora > platesByUser[key].ultimoUso) {
+            platesByUser[key].ultimoUso = dataHora;
+          }
+        });
+        
+        // Preencher tabela
+        const tbody = document.getElementById('platesTableBody');
+        tbody.innerHTML = '';
+
+        const plateEntries = Object.values(platesByUser);
+        
+        if (plateEntries.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhuma placa encontrada</td></tr>';
+          console.log('❌ Nenhuma placa encontrada no Firestore');
+          return;
+        }
+
+        // Ordenar por placa
+        plateEntries.sort((a, b) => a.placa.localeCompare(b.placa));
+
+        plateEntries.forEach((plateData) => {
+          const row = tbody.insertRow();
+          
+          row.insertCell(0).textContent = plateData.placa;
+          row.insertCell(1).textContent = plateData.userEmail;
+          row.insertCell(2).textContent = plateData.totalRegistros;
+          
+          // Formatar datas
+          const formatarData = (dataStr) => {
+            if (!dataStr) return '-';
+            try {
+              // Se a data já está no formato brasileiro, retorna como está
+              if (dataStr.includes('/')) return dataStr.split(' ')[0]; // Remove horário se houver
+              // Se está em outro formato, tenta converter
+              return new Date(dataStr).toLocaleDateString('pt-BR');
+            } catch (e) {
+              return dataStr;
+            }
+          };
+          
+          row.insertCell(3).textContent = formatarData(plateData.primeiroUso);
+          row.insertCell(4).textContent = formatarData(plateData.ultimoUso);
+        });
+        
+        console.log(`✅ Total de placas carregadas: ${plateEntries.length}`);
+        
+      } catch (error) {
+        console.error('❌ Erro detalhado ao carregar placas:', error);
+        alert('Erro ao carregar placas: ' + error.message);
+      }
+    }
+
+    // NOVA FUNCIONALIDADE: Exportar placas para Excel
+    function exportPlatesToExcel() {
+      const table = document.getElementById('platesTable');
+      const rows = Array.from(table.rows);
+      
+      const data = rows.map(row => {
+        const cells = Array.from(row.cells);
+        return cells.map(cell => cell.textContent);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Placas por Usuário");
+      XLSX.writeFile(wb, "placas_por_usuario.xlsx");
+    }
+
     async function loadMileageRecords() {
       if (!currentUser) return; // Não carrega se não houver usuário logado
 
@@ -748,29 +893,34 @@
             window.firebaseDbMethods.collection(window.firebaseDb, 'mileageRecords'),
             window.firebaseDbMethods.orderBy('timestamp', 'desc')
           );
-          console.log('Admin: carregando TODOS os registros de quilometragem...');
+          console.log('🔥 ADMIN: carregando TODOS os registros de quilometragem...');
         } else {
-          // Usuário comum vê apenas seus próprios registros
+          // CORREÇÃO CRÍTICA: Usuário comum vê APENAS seus próprios registros
           q = window.firebaseDbMethods.query(
             window.firebaseDbMethods.collection(window.firebaseDb, 'mileageRecords'),
             window.firebaseDbMethods.where('userId', '==', currentUser.uid),
             window.firebaseDbMethods.orderBy('timestamp', 'desc')
           );
-          console.log('Usuário comum: carregando apenas registros próprios...');
+          console.log('👤 USUÁRIO COMUM: carregando APENAS registros próprios para UID:', currentUser.uid);
         }
 
         const querySnapshot = await window.firebaseDbMethods.getDocs(q);
         allMileageRecords = []; // Limpa os registros anteriores
         querySnapshot.forEach((doc) => {
-          allMileageRecords.push({ id: doc.id, ...doc.data() });
+          const data = doc.data();
+          // CORREÇÃO CRÍTICA: Filtro adicional no cliente para garantir segregação
+          if (isAdmin || data.userId === currentUser.uid) {
+            allMileageRecords.push({ id: doc.id, ...data });
+          }
         });
+        
         registros = [...allMileageRecords]; // Atualiza a variável global de registros
-        console.log(`Registros de quilometragem carregados do Firestore (${isAdmin ? 'ADMIN' : 'USER'}):`, registros.length, 'registros');
+        console.log(`📊 Registros carregados (${isAdmin ? 'ADMIN' : 'USER'}):`, registros.length, 'registros');
         
         // Se houver dados no localStorage, migrar para o Firestore e limpar localStorage
         const localRegistros = JSON.parse(localStorage.getItem("registros")) || [];
         if (localRegistros.length > 0) {
-          console.log('Migrando registros do localStorage para Firestore...');
+          console.log('📦 Migrando registros do localStorage para Firestore...');
           for (const rec of localRegistros) {
             // Verifica se o registro já existe no Firestore para evitar duplicatas
             const exists = allMileageRecords.some(fr => 
@@ -783,13 +933,13 @@
               await window.firebaseDbMethods.setDoc(docRef, {
                 ...rec,
                 userId: currentUser.uid,
-                userEmail: currentUser.email, // Adicionado para migração
+                userEmail: currentUser.email,
                 timestamp: window.firebaseDbMethods.serverTimestamp()
               });
             }
           }
           localStorage.removeItem("registros");
-          console.log('Registros do localStorage migrados e localStorage limpo.');
+          console.log('✅ Registros do localStorage migrados e localStorage limpo.');
           // Recarrega os registros do Firestore após a migração
           await loadMileageRecords(); 
           return; // Sai da função para evitar executar o resto duas vezes
@@ -801,7 +951,7 @@
         atualizarDashboard();
 
       } catch (error) {
-        console.error('Erro ao carregar registros de quilometragem do Firestore:', error);
+        console.error('❌ Erro ao carregar registros de quilometragem do Firestore:', error);
         alert('Erro ao carregar registros: ' + error.message);
       }
     }
